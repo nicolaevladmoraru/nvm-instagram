@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from flask import Flask, request, jsonify
 
@@ -8,9 +9,13 @@ IG_USER_ID = os.getenv("IG_USER_ID", "").strip()
 IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN", "").strip()
 GRAPH_INSTAGRAM_BASE = "https://graph.instagram.com"
 
+# =========================
+# BASIC ROUTES
+# =========================
 @app.route("/", methods=["GET"])
 def home():
     return "nvm-instagram running"
+
 
 @app.route("/debug-env", methods=["GET"])
 def debug_env():
@@ -20,6 +25,7 @@ def debug_env():
         "token_prefix": token[:8],
         "token_length": len(token)
     })
+
 
 @app.route("/debug-me", methods=["GET"])
 def debug_me():
@@ -51,6 +57,10 @@ def debug_me():
             "error": str(e)
         }), 500
 
+
+# =========================
+# INSTAGRAM PUBLISH HELPERS
+# =========================
 def create_instagram_media(image_url: str, caption: str) -> str:
     url = f"{GRAPH_INSTAGRAM_BASE}/{IG_USER_ID}/media"
     payload = {
@@ -63,6 +73,39 @@ def create_instagram_media(image_url: str, caption: str) -> str:
     data = response.json()
     return data["id"]
 
+
+def get_container_status(creation_id: str) -> dict:
+    url = f"{GRAPH_INSTAGRAM_BASE}/{creation_id}"
+    params = {
+        "fields": "id,status_code",
+        "access_token": IG_ACCESS_TOKEN,
+    }
+    response = requests.get(url, params=params, timeout=60)
+    response.raise_for_status()
+    return response.json()
+
+
+def wait_until_media_ready(creation_id: str, max_attempts: int = 10, delay_seconds: int = 4) -> dict:
+    last_status = {}
+
+    # Instagram may need a moment before the container becomes publishable.
+    time.sleep(5)
+
+    for _ in range(max_attempts):
+        last_status = get_container_status(creation_id)
+        status_code = str(last_status.get("status_code", "")).upper()
+
+        if status_code == "FINISHED":
+            return last_status
+
+        if status_code == "ERROR":
+            raise RuntimeError(f"Media container failed: {last_status}")
+
+        time.sleep(delay_seconds)
+
+    raise RuntimeError(f"Media not ready in time: {last_status}")
+
+
 def publish_instagram_media(creation_id: str) -> dict:
     url = f"{GRAPH_INSTAGRAM_BASE}/{IG_USER_ID}/media_publish"
     payload = {
@@ -73,6 +116,10 @@ def publish_instagram_media(creation_id: str) -> dict:
     response.raise_for_status()
     return response.json()
 
+
+# =========================
+# POST ALERT
+# =========================
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
     try:
@@ -107,11 +154,13 @@ def post_alert():
         )
 
         creation_id = create_instagram_media(image_url, caption)
+        status_result = wait_until_media_ready(creation_id)
         publish_result = publish_instagram_media(creation_id)
 
         return jsonify({
             "ok": True,
             "creation_id": creation_id,
+            "status_result": status_result,
             "publish_result": publish_result
         })
 
@@ -132,6 +181,7 @@ def post_alert():
             "ok": False,
             "error": str(e)
         }), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
