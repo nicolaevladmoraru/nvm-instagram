@@ -6,9 +6,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
-IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
-IG_USER_ID = os.getenv("IG_USER_ID")
-IMGBB_API_KEY = os.getenv("IMGBB_API_KEY")
+IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
+IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
+IMGBB_API_KEY = (os.getenv("IMGBB_API_KEY") or "").strip()
 
 
 # =============================
@@ -21,37 +21,151 @@ def save_image(img, name):
 
 
 # =============================
+# FONT HELPERS
+# =============================
+def get_font(size: int, bold: bool = False):
+    candidates = []
+    if bold:
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        ]
+    else:
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        ]
+
+    for path in candidates:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size=size)
+
+    return ImageFont.load_default()
+
+
+# =============================
+# SIMPLE TEXT WRAP
+# =============================
+def wrap_text(draw, text, font, max_width):
+    words = str(text or "").split()
+    if not words:
+        return [""]
+
+    lines = []
+    current = words[0]
+
+    for word in words[1:]:
+        test = f"{current} {word}"
+        bbox = draw.textbbox((0, 0), test, font=font)
+        width = bbox[2] - bbox[0]
+
+        if width <= max_width:
+            current = test
+        else:
+            lines.append(current)
+            current = word
+
+    lines.append(current)
+    return lines
+
+
+# =============================
 # BUILD IMAGE FROM TEMPLATE
 # =============================
-def build_alert_image(league, home, away, minute, score, pick):
-    img = Image.open("template.png").convert("RGBA")
+def build_alert_image(league_key, home_team, away_team, minute, score, pick_text):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    img_path = os.path.join(base_dir, "template.png")
+
+    img = Image.open(img_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # Fonts (fallback safe)
-    try:
-        font_league = ImageFont.truetype("arial.ttf", 42)
-        font_match = ImageFont.truetype("arialbd.ttf", 70)
-        font_info = ImageFont.truetype("arialbd.ttf", 48)
-        font_pick = ImageFont.truetype("arialbd.ttf", 52)
-    except:
-        font_league = font_match = font_info = font_pick = ImageFont.load_default()
+    # Fonts tuned for your template
+    font_league = get_font(40, bold=False)
+    font_match = get_font(66, bold=True)
+    font_info = get_font(50, bold=True)
+    font_pick = get_font(54, bold=True)
+
+    white = (255, 255, 255)
+    mint = (150, 235, 245)
 
     # League
-    draw.text((540, 220), league, fill=(255, 255, 255), font=font_league, anchor="mm")
+    draw.text((540, 218), str(league_key), fill=white, font=font_league, anchor="mm")
 
-    # Match
-    draw.text((540, 330), f"{home} vs {away}", fill=(255, 255, 255), font=font_match, anchor="mm")
+    # Match (centered, possibly 2 lines if too long)
+    match_text = f"{home_team} vs {away_team}"
+    match_lines = wrap_text(draw, match_text, font_match, 640)
+
+    if len(match_lines) == 1:
+        draw.text((540, 330), match_lines[0], fill=white, font=font_match, anchor="mm")
+    else:
+        y = 300
+        for line in match_lines[:2]:
+            draw.text((540, y), line, fill=white, font=font_match, anchor="mm")
+            y += 72
 
     # Minute
-    draw.text((230, 470), f"{minute}", fill=(255, 255, 255), font=font_info)
+    draw.text((330, 470), str(minute), fill=white, font=font_info)
 
     # Score
-    draw.text((230, 560), f"{score}", fill=(255, 255, 255), font=font_info)
+    draw.text((330, 560), str(score), fill=white, font=font_info)
 
     # Pick
-    draw.text((230, 650), f"{pick}", fill=(120, 255, 200), font=font_pick)
+    pick_lines = wrap_text(draw, str(pick_text), font_pick, 420)
+    if len(pick_lines) == 1:
+        draw.text((330, 650), pick_lines[0], fill=mint, font=font_pick)
+    else:
+        y = 650
+        for line in pick_lines[:2]:
+            draw.text((330, y), line, fill=mint, font=font_pick)
+            y += 58
 
     return save_image(img, "alert")
+
+
+# =============================
+# BUILD REPORT IMAGE
+# =============================
+def build_report_image(title, period_label, message):
+    width, height = 1080, 1350
+    img = Image.new("RGB", (width, height), (11, 20, 39))
+    draw = ImageDraw.Draw(img)
+
+    gold = (242, 196, 78)
+    white = (245, 247, 250)
+    blue = (70, 130, 220)
+    gray = (182, 190, 200)
+
+    draw.rounded_rectangle((36, 36, 1044, 1314), radius=34, outline=blue, width=4)
+
+    font_title = get_font(56, bold=True)
+    font_sub = get_font(34, bold=True)
+    font_text = get_font(28, bold=False)
+    font_small = get_font(30, bold=False)
+
+    draw.text((60, 60), str(title), font=font_title, fill=gold)
+    draw.text((60, 138), str(period_label), font=font_sub, fill=gray)
+
+    y = 220
+    for paragraph in str(message or "").split("\n"):
+        paragraph = paragraph.strip()
+        if paragraph == "":
+            y += 16
+            continue
+
+        wrapped = wrap_text(draw, paragraph, font_text, 920)
+
+        for line in wrapped:
+            draw.text((60, y), line, font=font_text, fill=white)
+            y += 38
+
+        y += 4
+        if y > 1180:
+            break
+
+    draw.text((60, 1240), "Join now on Telegram", font=get_font(34, bold=True), fill=gold)
+    draw.text((60, 1284), "@nvm_access_engine_bot", font=font_small, fill=white)
+
+    return save_image(img, "report")
 
 
 # =============================
@@ -63,92 +177,239 @@ def upload_to_imgbb(image_path):
             "https://api.imgbb.com/1/upload",
             params={"key": IMGBB_API_KEY},
             files={"image": f},
+            timeout=120,
         )
-    return res.json()["data"]["url"]
+    res.raise_for_status()
+    data = res.json()
+    return data["data"]["url"]
 
 
 # =============================
-# POST TO INSTAGRAM
+# INSTAGRAM HELPERS
 # =============================
-def post_to_instagram(image_url, caption):
-    # Create media
-    r = requests.post(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media",
+def create_media_container(image_url, caption):
+    response = requests.post(
+        f"https://graph.instagram.com/{IG_USER_ID}/media",
         data={
             "image_url": image_url,
             "caption": caption,
             "access_token": IG_ACCESS_TOKEN,
         },
-    ).json()
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()["id"]
 
-    creation_id = r.get("id")
 
-    # Wait for processing
-    time.sleep(3)
+def get_container_status(creation_id):
+    response = requests.get(
+        f"https://graph.instagram.com/{creation_id}",
+        params={
+            "fields": "id,status_code",
+            "access_token": IG_ACCESS_TOKEN,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
 
-    # Publish
-    publish = requests.post(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish",
+
+def wait_until_media_ready(creation_id, max_attempts=10, delay_seconds=4):
+    last_status = {}
+    time.sleep(5)
+
+    for _ in range(max_attempts):
+        last_status = get_container_status(creation_id)
+        status_code = str(last_status.get("status_code", "")).upper()
+
+        if status_code == "FINISHED":
+            return last_status
+
+        if status_code == "ERROR":
+            raise RuntimeError(f"Media container failed: {last_status}")
+
+        time.sleep(delay_seconds)
+
+    raise RuntimeError(f"Media not ready in time: {last_status}")
+
+
+def publish_media_container(creation_id):
+    response = requests.post(
+        f"https://graph.instagram.com/{IG_USER_ID}/media_publish",
         data={
             "creation_id": creation_id,
             "access_token": IG_ACCESS_TOKEN,
         },
-    ).json()
-
-    return publish
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 # =============================
-# CAPTION
+# CAPTIONS
 # =============================
-def build_caption(league, home, away, minute, score, pick):
-    return f"""{league} | {home} vs {away}
+def sanitize_hashtag(text):
+    cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
+    return cleaned
+
+
+def build_alert_caption(league_key, home_team, away_team, minute, score, pick_text):
+    title = f"{league_key} | {home_team} vs {away_team}".strip(" |")
+
+    hashtags = [
+        f"#{sanitize_hashtag(league_key)}",
+        f"#{sanitize_hashtag(home_team)}",
+        f"#{sanitize_hashtag(away_team)}",
+        "#FootballAlerts",
+        "#LiveBetting",
+        "#BettingTips",
+        "#FootballPredictions",
+        "#SoccerTips",
+        "#GoalAlert",
+        "#LiveAlerts",
+        "#NVMProSystem",
+    ]
+
+    return f"""{title}
 
 ⚽ Live Alert
 ⏱ Minute: {minute}
 📊 Score: {score}
-🔥 Pick: {pick}
+🔥 Pick: {pick_text}
 
 📲 Join now on Telegram:
 @nvm_access_engine_bot
 
-#{league.replace(' ', '')} #{home.replace(' ', '')} #{away.replace(' ', '')} #Football #LiveBetting #BettingTips #FootballPredictions #SoccerTips #NVMProSystem
-"""
+{" ".join(hashtags)}
+""".strip()
+
+
+def build_report_caption(title, period_label):
+    return f"""{title}
+📅 {period_label}
+
+📲 Join now on Telegram:
+@nvm_access_engine_bot
+
+#FootballAlerts #LiveAlerts #BettingTips #FootballPredictions #SoccerTips #NVMProSystem
+""".strip()
 
 
 # =============================
-# ROUTE
-# =============================
-@app.route("/post-alert", methods=["POST"])
-def post_alert():
-    data = request.json
-
-    league = data.get("league")
-    home = data.get("home_team")
-    away = data.get("away_team")
-    minute = data.get("minute")
-    score = data.get("score")
-    pick = data.get("pick")
-
-    try:
-        image_path = build_alert_image(league, home, away, minute, score, pick)
-        image_url = upload_to_imgbb(image_path)
-        caption = build_caption(league, home, away, minute, score, pick)
-        result = post_to_instagram(image_url, caption)
-
-        return jsonify({
-            "ok": True,
-            "image_url": image_url,
-            "result": result
-        })
-
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
-
-# =============================
-# HEALTH CHECK
+# ROUTES
 # =============================
 @app.route("/")
 def home():
     return "Instagram service running"
+
+
+@app.route("/debug-env")
+def debug_env():
+    return jsonify({
+        "has_imgbb": bool(IMGBB_API_KEY),
+        "ig_user_id": IG_USER_ID,
+        "token_length": len(IG_ACCESS_TOKEN),
+        "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
+    })
+
+
+@app.route("/post-alert", methods=["POST"])
+def post_alert():
+    try:
+        data = request.get_json(force=True) or {}
+
+        # exact keys from live-engine
+        league_key = str(data.get("league_key", "")).strip()
+        home_team = str(data.get("home_team", "")).strip()
+        away_team = str(data.get("away_team", "")).strip()
+        minute = str(data.get("minute", "")).strip()
+        score = str(data.get("score", "")).strip()
+        pick_text = str(data.get("pick_text", "")).strip()
+
+        if not league_key:
+            league_key = "Live Football"
+        if not home_team:
+            home_team = "Home"
+        if not away_team:
+            away_team = "Away"
+        if not minute:
+            minute = "00"
+        if not score:
+            score = "0 - 0"
+        if not pick_text:
+            pick_text = "Over 0.5 Goals"
+
+        image_path = build_alert_image(
+            league_key=league_key,
+            home_team=home_team,
+            away_team=away_team,
+            minute=minute,
+            score=score,
+            pick_text=pick_text,
+        )
+
+        image_url = upload_to_imgbb(image_path)
+        caption = build_alert_caption(
+            league_key=league_key,
+            home_team=home_team,
+            away_team=away_team,
+            minute=minute,
+            score=score,
+            pick_text=pick_text,
+        )
+
+        creation_id = create_media_container(image_url, caption)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
+
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "caption": caption,
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/post-report", methods=["POST"])
+def post_report():
+    try:
+        data = request.get_json(force=True) or {}
+
+        title = str(data.get("title", "NVM LIVE ALERTS DAILY REPORT")).strip()
+        period_label = str(data.get("period_label", "")).strip()
+        message = str(data.get("message", "")).strip()
+
+        if not period_label:
+            period_label = "Daily Report"
+        if not message:
+            message = "No alerts for this period."
+
+        image_path = build_report_image(title, period_label, message)
+        image_url = upload_to_imgbb(image_path)
+        caption = build_report_caption(title, period_label)
+
+        creation_id = create_media_container(image_url, caption)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
+
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "caption": caption,
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
