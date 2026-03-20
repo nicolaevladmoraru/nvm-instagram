@@ -79,45 +79,51 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     img = Image.open(img_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # Fonts tuned for your template
-    font_league = get_font(40, bold=False)
-    font_match = get_font(66, bold=True)
-    font_info = get_font(50, bold=True)
-    font_pick = get_font(54, bold=True)
-
+    gold = (242, 196, 78)
     white = (255, 255, 255)
-    mint = (150, 235, 245)
+    mint = (170, 235, 245)
 
-    # League
-    draw.text((540, 218), str(league_key), fill=white, font=font_league, anchor="mm")
+    # Bigger fonts for easier reading
+    font_league = get_font(42, bold=False)
+    font_match = get_font(72, bold=True)
+    font_label = get_font(54, bold=True)
+    font_value = get_font(54, bold=True)
+    font_pick = get_font(62, bold=True)
 
-    # Match (centered, possibly 2 lines if too long)
+    # --- LEAGUE ---
+    league_lines = wrap_text(draw, str(league_key), font_league, 720)
+    y = 215
+    for line in league_lines[:2]:
+        draw.text((360, y), line, fill=white, font=font_league, anchor="mm")
+        y += 48
+
+    # --- MATCH ---
     match_text = f"{home_team} vs {away_team}"
-    match_lines = wrap_text(draw, match_text, font_match, 640)
+    match_lines = wrap_text(draw, match_text, font_match, 760)
+    y = 330
+    for line in match_lines[:2]:
+        draw.text((430, y), line, fill=white, font=font_match, anchor="mm")
+        y += 78
 
-    if len(match_lines) == 1:
-        draw.text((540, 330), match_lines[0], fill=white, font=font_match, anchor="mm")
-    else:
-        y = 300
-        for line in match_lines[:2]:
-            draw.text((540, y), line, fill=white, font=font_match, anchor="mm")
-            y += 72
+    # --- INFO BLOCK LEFT ---
+    label_x = 85
+    value_x = 340
 
-    # Minute
-    draw.text((330, 470), str(minute), fill=white, font=font_info)
+    # MINUTE
+    draw.text((label_x, 520), "MINUTE:", fill=gold, font=font_label)
+    draw.text((value_x, 520), str(minute), fill=white, font=font_value)
 
-    # Score
-    draw.text((330, 560), str(score), fill=white, font=font_info)
+    # SCORE
+    draw.text((label_x, 620), "SCORE:", fill=gold, font=font_label)
+    draw.text((value_x, 620), str(score), fill=white, font=font_value)
 
-    # Pick
+    # PICK
+    draw.text((label_x, 720), "PICK:", fill=gold, font=font_label)
+
     pick_lines = wrap_text(draw, str(pick_text), font_pick, 420)
-    if len(pick_lines) == 1:
-        draw.text((330, 650), pick_lines[0], fill=mint, font=font_pick)
-    else:
-        y = 650
-        for line in pick_lines[:2]:
-            draw.text((330, y), line, fill=mint, font=font_pick)
-            y += 58
+    y = 720
+    for idx, line in enumerate(pick_lines[:2]):
+        draw.text((value_x, y + idx * 66), line, fill=mint, font=font_pick)
 
     return save_image(img, "alert")
 
@@ -319,7 +325,6 @@ def post_alert():
     try:
         data = request.get_json(force=True) or {}
 
-        # exact keys from live-engine
         league_key = str(data.get("league_key", "")).strip()
         home_team = str(data.get("home_team", "")).strip()
         away_team = str(data.get("away_team", "")).strip()
