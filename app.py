@@ -83,47 +83,47 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     white = (255, 255, 255)
     mint = (170, 235, 245)
 
-    # Bigger fonts for easier reading
-    font_league = get_font(42, bold=False)
-    font_match = get_font(72, bold=True)
-    font_label = get_font(54, bold=True)
-    font_value = get_font(54, bold=True)
-    font_pick = get_font(62, bold=True)
+    # === FONTS (UPDATED SIZES) ===
+    font_league = get_font(52, bold=True)
+    font_match = get_font(90, bold=True)
+    font_label = get_font(60, bold=True)
+    font_value = get_font(60, bold=True)
+    font_pick = get_font(70, bold=True)
 
     # --- LEAGUE ---
-    league_lines = wrap_text(draw, str(league_key), font_league, 720)
-    y = 215
+    league_lines = wrap_text(draw, str(league_key), font_league, 800)
+    y = 230
     for line in league_lines[:2]:
-        draw.text((360, y), line, fill=white, font=font_league, anchor="mm")
-        y += 48
+        draw.text((540, y), line, fill=white, font=font_league, anchor="mm")
+        y += 60
 
     # --- MATCH ---
     match_text = f"{home_team} vs {away_team}"
-    match_lines = wrap_text(draw, match_text, font_match, 760)
-    y = 330
+    match_lines = wrap_text(draw, match_text, font_match, 850)
+    y = 380
     for line in match_lines[:2]:
-        draw.text((430, y), line, fill=white, font=font_match, anchor="mm")
-        y += 78
+        draw.text((540, y), line, fill=white, font=font_match, anchor="mm")
+        y += 95
 
-    # --- INFO BLOCK LEFT ---
-    label_x = 85
-    value_x = 340
+    # --- INFO BLOCK ---
+    label_x = 100
+    value_x = 420
 
     # MINUTE
-    draw.text((label_x, 520), "MINUTE:", fill=gold, font=font_label)
-    draw.text((value_x, 520), str(minute), fill=white, font=font_value)
+    draw.text((label_x, 580), "MINUTE:", fill=gold, font=font_label)
+    draw.text((value_x, 580), str(minute), fill=white, font=font_value)
 
     # SCORE
-    draw.text((label_x, 620), "SCORE:", fill=gold, font=font_label)
-    draw.text((value_x, 620), str(score), fill=white, font=font_value)
+    draw.text((label_x, 690), "SCORE:", fill=gold, font=font_label)
+    draw.text((value_x, 690), str(score), fill=white, font=font_value)
 
     # PICK
-    draw.text((label_x, 720), "PICK:", fill=gold, font=font_label)
+    draw.text((label_x, 800), "PICK:", fill=gold, font=font_label)
 
-    pick_lines = wrap_text(draw, str(pick_text), font_pick, 420)
-    y = 720
+    pick_lines = wrap_text(draw, str(pick_text), font_pick, 500)
+    y = 800
     for idx, line in enumerate(pick_lines[:2]):
-        draw.text((value_x, y + idx * 66), line, fill=mint, font=font_pick)
+        draw.text((value_x, y + idx * 75), line, fill=mint, font=font_pick)
 
     return save_image(img, "alert")
 
