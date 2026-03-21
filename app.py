@@ -85,6 +85,11 @@ def center_text(draw, x, y, text, font, fill):
     draw.text((x, y), str(text), fill=fill, font=font, anchor="mm")
 
 
+def draw_centered_lines(draw, x, start_y, lines, font, fill, line_gap):
+    for idx, line in enumerate(lines):
+        center_text(draw, x, start_y + idx * line_gap, line, font, fill)
+
+
 # =============================
 # COLORS
 # =============================
@@ -101,12 +106,12 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # MULT MAI MARE
+    # TEXT MULT MAI MARE
     font_title = get_font(60, bold=True)
-    font_league = get_font(42, bold=True)
-    font_match = get_font(56, bold=True)
-    font_label = get_font(44, bold=True)
-    font_value = get_font(44, bold=True)
+    font_league = get_font(40, bold=True)
+    font_match = get_font(52, bold=True)
+    font_label = get_font(42, bold=True)
+    font_value = get_font(42, bold=True)
 
     center_x = 540
 
@@ -115,32 +120,28 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
 
     # LEAGUE
     league_lines = wrap_text(draw, str(league_key), font_league, 900)[:2]
-    league_y = 130
-    for idx, line in enumerate(league_lines):
-        center_text(draw, center_x, league_y + idx * 48, line, font_league, WHITE)
+    draw_centered_lines(draw, center_x, 130, league_lines, font_league, WHITE, 46)
 
     # MATCH
     match_text = f"{home_team} vs {away_team}"
     match_lines = wrap_text(draw, match_text, font_match, 920)[:2]
-    match_y = 220
-    for idx, line in enumerate(match_lines):
-        center_text(draw, center_x, match_y + idx * 60, line, font_match, WHITE)
+    draw_centered_lines(draw, center_x, 240, match_lines, font_match, WHITE, 58)
 
+    # INFO BLOCK
     label_x = 40
-    value_x = 310
+    value_x = 300
 
-    # INFO BLOCK - MULT MAI MARE SI MAI JOS
-    draw.text((label_x, 420), "MINUTE:", fill=GOLD, font=font_label)
-    draw.text((value_x, 420), str(minute), fill=WHITE, font=font_value)
+    draw.text((label_x, 430), "MINUTE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 430), str(minute), fill=WHITE, font=font_value)
 
-    draw.text((label_x, 530), "SCORE:", fill=GOLD, font=font_label)
-    draw.text((value_x, 530), str(score), fill=WHITE, font=font_value)
+    draw.text((label_x, 540), "SCORE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 540), str(score), fill=WHITE, font=font_value)
 
-    draw.text((label_x, 660), "PICK:", fill=GOLD, font=font_label)
+    draw.text((label_x, 670), "PICK:", fill=GOLD, font=font_label)
 
-    pick_lines = wrap_text(draw, str(pick_text), font_value, 420)[:2]
+    pick_lines = wrap_text(draw, str(pick_text), font_value, 500)[:2]
     for idx, line in enumerate(pick_lines):
-        draw.text((value_x, 660 + idx * 52), line, fill=GOLD, font=font_value)
+        draw.text((value_x, 670 + idx * 52), line, fill=GOLD, font=font_value)
 
     return save_image(img, "alert")
 
@@ -152,34 +153,32 @@ def build_report_image(title, date_text, wins, lost, winrate):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # MULT MAI MARE
-    font_title = get_font(60, bold=True)
-    font_date = get_font(50, bold=True)
-    font_label = get_font(44, bold=True)
-    font_value = get_font(44, bold=True)
+    # TEXT MULT MAI MARE
+    font_title = get_font(58, bold=True)
+    font_date = get_font(44, bold=True)
+    font_label = get_font(42, bold=True)
+    font_value = get_font(42, bold=True)
 
     center_x = 540
 
     # TITLE
     center_text(draw, center_x, 35, str(title), font_title, GOLD)
 
-    # DATE / RANGE / X100
-    wrapped_date = wrap_text(draw, str(date_text), font_date, 920)[:2]
-    date_y = 170
-    for idx, line in enumerate(wrapped_date):
-        center_text(draw, center_x, date_y + idx * 56, line, font_date, WHITE)
+    # DATE / RANGE / MILESTONE
+    date_lines = wrap_text(draw, str(date_text), font_date, 920)[:2]
+    draw_centered_lines(draw, center_x, 170, date_lines, font_date, WHITE, 52)
 
     label_x = 40
     value_x = 330
 
-    draw.text((label_x, 420), "WINS:", fill=GREEN, font=font_label)
-    draw.text((value_x, 420), str(wins), fill=WHITE, font=font_value)
+    draw.text((label_x, 430), "WINS:", fill=GREEN, font=font_label)
+    draw.text((value_x, 430), str(wins), fill=WHITE, font=font_value)
 
-    draw.text((label_x, 530), "LOST:", fill=RED, font=font_label)
-    draw.text((value_x, 530), str(lost), fill=WHITE, font=font_value)
+    draw.text((label_x, 540), "LOST:", fill=RED, font=font_label)
+    draw.text((value_x, 540), str(lost), fill=WHITE, font=font_value)
 
-    draw.text((label_x, 660), "WIN RATE:", fill=GOLD, font=font_label)
-    draw.text((value_x, 660), str(winrate), fill=WHITE, font=font_value)
+    draw.text((label_x, 670), "WIN RATE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 670), str(winrate), fill=WHITE, font=font_value)
 
     return save_image(img, "report")
 
