@@ -1,6 +1,6 @@
 import os
 import time
-from flask import Flask, request, jsonify, send_file, abort, make_response
+from flask import Flask, request, jsonify, abort, Response
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
@@ -20,7 +20,7 @@ def save_image(img, name):
     path = os.path.join(GENERATED_DIR, filename)
 
     rgb_img = img.convert("RGB")
-    rgb_img.save(path, "JPEG", quality=95, optimize=True)
+    rgb_img.save(path, "JPEG", quality=95, optimize=False, progressive=False)
 
     return path, filename
 
@@ -147,7 +147,7 @@ def build_report_image(title, date_text, wins, lost, winrate):
     return save_image(img, "report")
 
 
-@app.route("/media/<filename>")
+@app.route("/media/<filename>", methods=["GET", "HEAD"])
 def media_file(filename):
     safe_name = os.path.basename(filename)
     path = os.path.join(GENERATED_DIR, safe_name)
@@ -155,12 +155,22 @@ def media_file(filename):
     if not os.path.exists(path):
         abort(404)
 
-    response = make_response(send_file(path, mimetype="image/jpeg", conditional=False))
-    response.headers["Content-Type"] = "image/jpeg"
-    response.headers["Cache-Control"] = "public, max-age=86400"
-    response.headers["Content-Disposition"] = f'inline; filename="{safe_name}"'
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    return response
+    with open(path, "rb") as f:
+        data = f.read()
+
+    headers = {
+        "Content-Type": "image/jpeg",
+        "Content-Length": str(len(data)),
+        "Cache-Control": "public, max-age=86400",
+        "Content-Disposition": f'inline; filename="{safe_name}"',
+        "X-Content-Type-Options": "nosniff",
+        "Accept-Ranges": "bytes",
+    }
+
+    if request.method == "HEAD":
+        return Response(status=200, headers=headers)
+
+    return Response(data, status=200, headers=headers)
 
 
 def build_public_base_url(req) -> str:
