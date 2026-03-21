@@ -1,15 +1,19 @@
 import os
 import time
-from flask import Flask, request, jsonify, send_file, abort
+from flask import Flask, request, jsonify
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+GENERATED_DIR = os.path.join(STATIC_DIR, "generated")
+
+os.makedirs(GENERATED_DIR, exist_ok=True)
+
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
 IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
-
-TMP_DIR = "/tmp"
 
 
 # =============================
@@ -17,7 +21,7 @@ TMP_DIR = "/tmp"
 # =============================
 def save_image(img, name):
     filename = f"{name}_{int(time.time())}.jpg"
-    path = os.path.join(TMP_DIR, filename)
+    path = os.path.join(GENERATED_DIR, filename)
 
     rgb_img = img.convert("RGB")
     rgb_img.save(path, "JPEG", quality=95)
@@ -195,6 +199,7 @@ def get_container_status(creation_id):
         },
         timeout=60,
     )
+    print("get_container_status:", response.status_code, response.text)
     return response.json()
 
 
@@ -229,14 +234,57 @@ def publish_media_container(creation_id):
 
 
 # =============================
-# MEDIA ROUTE
+# CAPTIONS
 # =============================
-@app.route("/media/<filename>")
-def serve_media(filename):
-    path = os.path.join(TMP_DIR, filename)
-    if not os.path.exists(path):
-        abort(404)
-    return send_file(path, mimetype="image/jpeg")
+def sanitize_hashtag(text):
+    cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
+    return cleaned
+
+
+def build_alert_caption(league_key, home_team, away_team, minute, score, pick_text):
+    hashtags = [
+        f"#{sanitize_hashtag(home_team)}",
+        f"#{sanitize_hashtag(away_team)}",
+        "#FootballAlerts",
+        "#LiveAlerts",
+        "#FootballPredictions",
+        "#BettingTips",
+        "#NVMProSystem",
+    ]
+
+    return f"""NVM LIVE ALERT
+
+{league_key}
+{home_team} vs {away_team}
+
+Minute: {minute}
+Score: {score}
+Pick: {pick_text}
+
+📲 @nvm_access_engine_bot
+
+{" ".join(hashtags)}
+""".strip()
+
+
+def build_report_caption(title, date_text, wins, lost, winrate, caption_message=""):
+    base = f"""{title}
+
+{date_text}
+
+Wins: {wins}
+Lost: {lost}
+Win Rate: {winrate}
+
+📲 @nvm_access_engine_bot
+
+#FootballAlerts #LiveAlerts #BettingTips #FootballPredictions #NVMProSystem
+""".strip()
+
+    extra = str(caption_message or "").strip()
+    if extra:
+        return f"{base}\n\n{extra}"
+    return base
 
 
 # =============================
@@ -245,6 +293,16 @@ def serve_media(filename):
 @app.route("/")
 def home():
     return "Instagram service running"
+
+
+@app.route("/debug-env")
+def debug_env():
+    return jsonify({
+        "ig_user_id": IG_USER_ID,
+        "token_length": len(IG_ACCESS_TOKEN),
+        "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
+        "generated_dir": GENERATED_DIR,
+    })
 
 
 @app.route("/post-alert", methods=["POST"])
@@ -265,16 +323,74 @@ def post_alert():
         if base_url.startswith("http://"):
             base_url = "https://" + base_url[len("http://"):]
 
-        image_url = f"{base_url}/media/{filename}"
+        image_url = f"{base_url}/static/generated/{filename}"
+        print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
 
-        caption = "NVM LIVE ALERT"
+        caption = build_alert_caption(
+            data.get("league_key", "League"),
+            data.get("home_team", "Home"),
+            data.get("away_team", "Away"),
+            data.get("minute", "00"),
+            data.get("score", "0 - 0"),
+            data.get("pick_text", "Over 0.5 Goals"),
+        )
 
         creation_id = create_media_container(image_url, caption)
         wait_until_media_ready(creation_id)
         publish = publish_media_container(creation_id)
 
-        return jsonify({"ok": True, "image_url": image_url, "publish": publish})
+        return jsonify({
+            "ok": True,
+            "image_path": image_path,
+            "image_url": image_url,
+            "publish": publish
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/post-report", methods=["POST"])
+def post_report():
+    try:
+        data = request.get_json(force=True) or {}
+
+        image_path, filename = build_report_image(
+            data.get("title", "NVM DAILY REPORT"),
+            data.get("date_text", "01/01/2026"),
+            data.get("wins", "0"),
+            data.get("lost", "0"),
+            data.get("winrate", "0%"),
+        )
+
+        base_url = request.url_root.rstrip("/")
+        if base_url.startswith("http://"):
+            base_url = "https://" + base_url[len("http://"):]
+
+        image_url = f"{base_url}/static/generated/{filename}"
+        print("IMAGE PATH:", image_path)
+        print("IMAGE URL:", image_url)
+
+        caption = build_report_caption(
+            data.get("title", "NVM DAILY REPORT"),
+            data.get("date_text", "01/01/2026"),
+            data.get("wins", "0"),
+            data.get("lost", "0"),
+            data.get("winrate", "0%"),
+            data.get("caption_message", ""),
+        )
+
+        creation_id = create_media_container(image_url, caption)
+        wait_until_media_ready(creation_id)
+        publish = publish_media_container(creation_id)
+
+        return jsonify({
+            "ok": True,
+            "image_path": image_path,
+            "image_url": image_url,
+            "publish": publish
+        })
 
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
