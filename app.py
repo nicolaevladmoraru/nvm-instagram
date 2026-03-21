@@ -175,8 +175,8 @@ def create_media_container(image_url, caption):
         },
         timeout=120,
     )
-    print("create_media_container status:", response.status_code)
-    print("create_media_container response:", response.text)
+
+    print("create_media_container:", response.status_code, response.text)
 
     if response.status_code != 200:
         raise RuntimeError(
@@ -195,31 +195,19 @@ def get_container_status(creation_id):
         },
         timeout=60,
     )
-    print("get_container_status:", response.status_code, response.text)
-
-    if response.status_code != 200:
-        raise RuntimeError(f"Meta status error: {response.text}")
-
     return response.json()
 
 
-def wait_until_media_ready(creation_id, max_attempts=12, delay_seconds=4):
-    last_status = {}
+def wait_until_media_ready(creation_id):
     time.sleep(5)
 
-    for _ in range(max_attempts):
-        last_status = get_container_status(creation_id)
-        status_code = str(last_status.get("status_code", "")).upper()
+    for _ in range(10):
+        status = get_container_status(creation_id)
+        if status.get("status_code") == "FINISHED":
+            return status
+        time.sleep(3)
 
-        if status_code == "FINISHED":
-            return last_status
-
-        if status_code == "ERROR":
-            raise RuntimeError(f"Media container failed: {last_status}")
-
-        time.sleep(delay_seconds)
-
-    raise RuntimeError(f"Media not ready in time: {last_status}")
+    raise RuntimeError("Media not ready")
 
 
 def publish_media_container(creation_id):
@@ -231,80 +219,24 @@ def publish_media_container(creation_id):
         },
         timeout=120,
     )
-    print("publish_media_container:", response.status_code, response.text)
+
+    print("publish:", response.status_code, response.text)
 
     if response.status_code != 200:
-        raise RuntimeError(f"Meta publish error: {response.text}")
+        raise RuntimeError(response.text)
 
     return response.json()
 
 
 # =============================
-# CAPTIONS
-# =============================
-def sanitize_hashtag(text):
-    cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
-    return cleaned
-
-
-def build_alert_caption(league_key, home_team, away_team, minute, score, pick_text):
-    hashtags = [
-        f"#{sanitize_hashtag(home_team)}",
-        f"#{sanitize_hashtag(away_team)}",
-        "#FootballAlerts",
-        "#LiveAlerts",
-        "#FootballPredictions",
-        "#BettingTips",
-        "#NVMProSystem",
-    ]
-
-    return f"""NVM LIVE ALERT
-
-{league_key}
-{home_team} vs {away_team}
-
-Minute: {minute}
-Score: {score}
-Pick: {pick_text}
-
-📲 @nvm_access_engine_bot
-
-{" ".join(hashtags)}
-""".strip()
-
-
-def build_report_caption(title, date_text, wins, lost, winrate, caption_message=""):
-    base = f"""{title}
-
-{date_text}
-
-Wins: {wins}
-Lost: {lost}
-Win Rate: {winrate}
-
-📲 @nvm_access_engine_bot
-
-#FootballAlerts #LiveAlerts #BettingTips #FootballPredictions #NVMProSystem
-""".strip()
-
-    extra = str(caption_message or "").strip()
-    if extra:
-        return f"{base}\n\n{extra}"
-    return base
-
-
-# =============================
-# PUBLIC MEDIA ROUTE
+# MEDIA ROUTE
 # =============================
 @app.route("/media/<filename>")
 def serve_media(filename):
-    safe_name = os.path.basename(filename)
-    path = os.path.join(TMP_DIR, safe_name)
-
+    path = os.path.join(TMP_DIR, filename)
     if not os.path.exists(path):
         abort(404)
-
-    return send_file(path, mimetype="image/jpeg", max_age=300)
+    return send_file(path, mimetype="image/jpeg")
 
 
 # =============================
@@ -315,111 +247,34 @@ def home():
     return "Instagram service running"
 
 
-@app.route("/debug-env")
-def debug_env():
-    return jsonify({
-        "ig_user_id": IG_USER_ID,
-        "token_length": len(IG_ACCESS_TOKEN),
-        "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
-    })
-
-
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
     try:
         data = request.get_json(force=True) or {}
 
-        league_key = str(data.get("league_key", "")).strip() or "Live Football"
-        home_team = str(data.get("home_team", "")).strip() or "Home"
-        away_team = str(data.get("away_team", "")).strip() or "Away"
-        minute = str(data.get("minute", "")).strip() or "00"
-        score = str(data.get("score", "")).strip() or "0 - 0"
-        pick_text = str(data.get("pick_text", "")).strip() or "Over 0.5 Goals"
-
         image_path, filename = build_alert_image(
-            league_key=league_key,
-            home_team=home_team,
-            away_team=away_team,
-            minute=minute,
-            score=score,
-            pick_text=pick_text,
+            data.get("league_key", "League"),
+            data.get("home_team", "Home"),
+            data.get("away_team", "Away"),
+            data.get("minute", "00"),
+            data.get("score", "0 - 0"),
+            data.get("pick_text", "Over 0.5 Goals"),
         )
 
-        image_url = f"{request.url_root.rstrip('/')}/media/{filename}"
-        print("PUBLIC IMAGE URL:", image_url)
+        base_url = request.url_root.rstrip("/")
+        if base_url.startswith("http://"):
+            base_url = "https://" + base_url[len("http://"):]
 
-        caption = build_alert_caption(
-            league_key=league_key,
-            home_team=home_team,
-            away_team=away_team,
-            minute=minute,
-            score=score,
-            pick_text=pick_text,
-        )
+        image_url = f"{base_url}/media/{filename}"
+        print("IMAGE URL:", image_url)
+
+        caption = "NVM LIVE ALERT"
 
         creation_id = create_media_container(image_url, caption)
-        status_result = wait_until_media_ready(creation_id)
-        publish_result = publish_media_container(creation_id)
+        wait_until_media_ready(creation_id)
+        publish = publish_media_container(creation_id)
 
-        return jsonify({
-            "ok": True,
-            "image_path": image_path,
-            "image_url": image_url,
-            "caption": caption,
-            "creation_id": creation_id,
-            "status_result": status_result,
-            "publish_result": publish_result,
-        })
-
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/post-report", methods=["POST"])
-def post_report():
-    try:
-        data = request.get_json(force=True) or {}
-
-        title = str(data.get("title", "NVM DAILY REPORT")).strip()
-        date_text = str(data.get("date_text", "")).strip() or "01/01/2026"
-        wins = str(data.get("wins", "0")).strip()
-        lost = str(data.get("lost", "0")).strip()
-        winrate = str(data.get("winrate", "0%")).strip()
-        caption_message = str(data.get("caption_message", "")).strip()
-
-        image_path, filename = build_report_image(
-            title=title,
-            date_text=date_text,
-            wins=wins,
-            lost=lost,
-            winrate=winrate,
-        )
-
-        image_url = f"{request.url_root.rstrip('/')}/media/{filename}"
-        print("PUBLIC IMAGE URL:", image_url)
-
-        caption = build_report_caption(
-            title=title,
-            date_text=date_text,
-            wins=wins,
-            lost=lost,
-            winrate=winrate,
-            caption_message=caption_message,
-        )
-
-        creation_id = create_media_container(image_url, caption)
-        status_result = wait_until_media_ready(creation_id)
-        publish_result = publish_media_container(creation_id)
-
-        return jsonify({
-            "ok": True,
-            "image_path": image_path,
-            "image_url": image_url,
-            "caption": caption,
-            "creation_id": creation_id,
-            "status_result": status_result,
-            "publish_result": publish_result,
-        })
+        return jsonify({"ok": True, "image_url": image_url, "publish": publish})
 
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
