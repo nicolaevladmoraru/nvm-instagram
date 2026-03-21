@@ -171,7 +171,7 @@ def upload_to_imgbb(image_path):
         )
 
     print("upload_to_imgbb status:", res.status_code)
-    print("upload_to_imgbb response:", res.text[:1000])
+    print("upload_to_imgbb response:", res.text[:1500])
 
     res.raise_for_status()
     data = res.json()
@@ -179,11 +179,22 @@ def upload_to_imgbb(image_path):
     if not data.get("success"):
         raise RuntimeError(f"imgbb upload failed: {data}")
 
-    image_url = str(data["data"].get("url") or "").strip()
+    # Prefer the most direct raw image URL available
+    image_url = (
+        str(((data.get("data") or {}).get("image") or {}).get("url") or "").strip()
+        or str((data.get("data") or {}).get("url") or "").strip()
+        or str((data.get("data") or {}).get("display_url") or "").strip()
+    )
+
     if not image_url:
         raise RuntimeError(f"imgbb direct URL missing: {data}")
 
     print("IMGBB DIRECT URL:", image_url)
+
+    # Quick sanity check that Meta can consume a normal image URL
+    if not image_url.lower().startswith(("http://", "https://")):
+        raise RuntimeError(f"Invalid image URL from imgbb: {image_url}")
+
     return image_url
 
 
@@ -204,7 +215,9 @@ def create_media_container(image_url, caption):
     print("create_media_container response:", response.text)
 
     if response.status_code != 200:
-        raise RuntimeError(f"Meta create media error: {response.text}")
+        raise RuntimeError(
+            f"Meta create media error | image_url={image_url} | response={response.text}"
+        )
 
     return response.json()["id"]
 
