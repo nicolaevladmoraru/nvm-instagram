@@ -19,6 +19,9 @@ CLOUDINARY_API_KEY = (os.getenv("CLOUDINARY_API_KEY") or "").strip()
 CLOUDINARY_API_SECRET = (os.getenv("CLOUDINARY_API_SECRET") or "").strip()
 
 
+# =============================
+# IMAGE SAVE
+# =============================
 def save_image(img, name):
     filename = f"{name}_{int(time.time())}.jpg"
     path = os.path.join(GENERATED_DIR, filename)
@@ -29,6 +32,9 @@ def save_image(img, name):
     return path, filename
 
 
+# =============================
+# FONT HELPERS
+# =============================
 def get_font(size: int, bold: bool = False):
     candidates = []
     if bold:
@@ -49,6 +55,9 @@ def get_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+# =============================
+# TEXT HELPERS
+# =============================
 def wrap_text(draw, text, font, max_width):
     words = str(text or "").split()
     if not words:
@@ -72,85 +81,112 @@ def wrap_text(draw, text, font, max_width):
     return lines
 
 
-def center_text(draw, y, text, font, fill):
-    draw.text((540, y), str(text), fill=fill, font=font, anchor="ma")
+def center_text(draw, x, y, text, font, fill):
+    draw.text((x, y), str(text), fill=fill, font=font, anchor="mm")
 
 
+# =============================
+# COLORS
+# =============================
 GOLD = (242, 196, 78)
 WHITE = (255, 255, 255)
 GREEN = (120, 255, 120)
 RED = (255, 80, 80)
 
 
+# =============================
+# BUILD ALERT IMAGE
+# =============================
 def build_alert_image(league_key, home_team, away_team, minute, score, pick_text):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    font_title = get_font(27, bold=True)
-    font_league = get_font(19, bold=True)
-    font_match = get_font(23, bold=True)
-    font_label = get_font(20, bold=True)
-    font_value = get_font(20, bold=True)
+    # MULT MAI MARE
+    font_title = get_font(60, bold=True)
+    font_league = get_font(42, bold=True)
+    font_match = get_font(56, bold=True)
+    font_label = get_font(44, bold=True)
+    font_value = get_font(44, bold=True)
 
-    center_text(draw, 20, "NVM LIVE ALERT", font_title, GOLD)
+    center_x = 540
 
+    # TITLE
+    center_text(draw, center_x, 35, "NVM LIVE ALERT", font_title, GOLD)
+
+    # LEAGUE
     league_lines = wrap_text(draw, str(league_key), font_league, 900)[:2]
-    league_y = 75
-    for line in league_lines:
-        center_text(draw, league_y, line, font_league, WHITE)
-        league_y += 22
+    league_y = 130
+    for idx, line in enumerate(league_lines):
+        center_text(draw, center_x, league_y + idx * 48, line, font_league, WHITE)
 
+    # MATCH
     match_text = f"{home_team} vs {away_team}"
-    match_lines = wrap_text(draw, match_text, font_match, 900)[:2]
-    match_y = 110
-    for line in match_lines:
-        center_text(draw, match_y, line, font_match, WHITE)
-        match_y += 26
+    match_lines = wrap_text(draw, match_text, font_match, 920)[:2]
+    match_y = 220
+    for idx, line in enumerate(match_lines):
+        center_text(draw, center_x, match_y + idx * 60, line, font_match, WHITE)
 
-    label_x = 35
-    value_x = 205
+    label_x = 40
+    value_x = 310
 
-    draw.text((label_x, 185), "MINUTE:", fill=GOLD, font=font_label)
-    draw.text((label_x, 220), "SCORE:", fill=GOLD, font=font_label)
-    draw.text((label_x, 280), "PICK:", fill=GOLD, font=font_label)
+    # INFO BLOCK - MULT MAI MARE SI MAI JOS
+    draw.text((label_x, 420), "MINUTE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 420), str(minute), fill=WHITE, font=font_value)
 
-    draw.text((value_x, 185), str(minute), fill=WHITE, font=font_value)
-    draw.text((value_x, 220), str(score), fill=WHITE, font=font_value)
+    draw.text((label_x, 530), "SCORE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 530), str(score), fill=WHITE, font=font_value)
 
-    pick_lines = wrap_text(draw, str(pick_text), font_value, 420)
-    pick_y = 280
-    for idx, line in enumerate(pick_lines[:2]):
-        draw.text((value_x, pick_y + idx * 24), line, fill=GOLD, font=font_value)
+    draw.text((label_x, 660), "PICK:", fill=GOLD, font=font_label)
+
+    pick_lines = wrap_text(draw, str(pick_text), font_value, 420)[:2]
+    for idx, line in enumerate(pick_lines):
+        draw.text((value_x, 660 + idx * 52), line, fill=GOLD, font=font_value)
 
     return save_image(img, "alert")
 
 
+# =============================
+# BUILD REPORT IMAGE
+# =============================
 def build_report_image(title, date_text, wins, lost, winrate):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    font_title = get_font(27, bold=True)
-    font_date = get_font(23, bold=True)
-    font_label = get_font(20, bold=True)
-    font_value = get_font(20, bold=True)
+    # MULT MAI MARE
+    font_title = get_font(60, bold=True)
+    font_date = get_font(50, bold=True)
+    font_label = get_font(44, bold=True)
+    font_value = get_font(44, bold=True)
 
-    center_text(draw, 20, str(title), font_title, GOLD)
-    center_text(draw, 110, str(date_text), font_date, WHITE)
+    center_x = 540
 
-    label_x = 35
-    value_x = 205
+    # TITLE
+    center_text(draw, center_x, 35, str(title), font_title, GOLD)
 
-    draw.text((label_x, 185), "WINS:", fill=GREEN, font=font_label)
-    draw.text((label_x, 220), "LOST:", fill=RED, font=font_label)
-    draw.text((label_x, 280), "WIN RATE:", fill=GOLD, font=font_label)
+    # DATE / RANGE / X100
+    wrapped_date = wrap_text(draw, str(date_text), font_date, 920)[:2]
+    date_y = 170
+    for idx, line in enumerate(wrapped_date):
+        center_text(draw, center_x, date_y + idx * 56, line, font_date, WHITE)
 
-    draw.text((value_x, 185), str(wins), fill=WHITE, font=font_value)
-    draw.text((value_x, 220), str(lost), fill=WHITE, font=font_value)
-    draw.text((value_x, 280), str(winrate), fill=WHITE, font=font_value)
+    label_x = 40
+    value_x = 330
+
+    draw.text((label_x, 420), "WINS:", fill=GREEN, font=font_label)
+    draw.text((value_x, 420), str(wins), fill=WHITE, font=font_value)
+
+    draw.text((label_x, 530), "LOST:", fill=RED, font=font_label)
+    draw.text((value_x, 530), str(lost), fill=WHITE, font=font_value)
+
+    draw.text((label_x, 660), "WIN RATE:", fill=GOLD, font=font_label)
+    draw.text((value_x, 660), str(winrate), fill=WHITE, font=font_value)
 
     return save_image(img, "report")
 
 
+# =============================
+# CLOUDINARY
+# =============================
 def upload_to_cloudinary(image_path: str, public_id_prefix: str) -> str:
     if not CLOUDINARY_CLOUD_NAME or not CLOUDINARY_API_KEY or not CLOUDINARY_API_SECRET:
         raise RuntimeError("Cloudinary variables are missing.")
@@ -198,6 +234,9 @@ def upload_to_cloudinary(image_path: str, public_id_prefix: str) -> str:
     return secure_url
 
 
+# =============================
+# INSTAGRAM / META
+# =============================
 def create_media_container(image_url, caption):
     response = requests.post(
         f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media",
@@ -273,6 +312,9 @@ def publish_media_container(creation_id):
     return response.json()
 
 
+# =============================
+# CAPTIONS
+# =============================
 def sanitize_hashtag(text):
     cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
     return cleaned
@@ -324,6 +366,9 @@ Win Rate: {winrate}
     return base
 
 
+# =============================
+# ROUTES
+# =============================
 @app.route("/")
 def home():
     return "Instagram service running"
@@ -353,7 +398,7 @@ def post_alert():
         score = str(data.get("score", "0 - 0"))
         pick_text = str(data.get("pick_text", "Over 0.5 Goals"))
 
-        image_path, filename = build_alert_image(
+        image_path, _filename = build_alert_image(
             league_key,
             home_team,
             away_team,
@@ -404,7 +449,7 @@ def post_report():
         winrate = str(data.get("winrate", "0%"))
         caption_message = str(data.get("caption_message", ""))
 
-        image_path, filename = build_report_image(
+        image_path, _filename = build_report_image(
             title,
             date_text,
             wins,
