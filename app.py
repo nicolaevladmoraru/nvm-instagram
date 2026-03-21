@@ -80,7 +80,6 @@ GOLD = (242, 196, 78)
 WHITE = (255, 255, 255)
 GREEN = (120, 255, 120)
 RED = (255, 80, 80)
-MINT = (242, 196, 78)
 
 
 # =============================
@@ -101,9 +100,7 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
 
     # LEAGUE
     league_lines = wrap_text(draw, str(league_key), font_league, 900)
-    if len(league_lines) > 2:
-        league_lines = league_lines[:2]
-
+    league_lines = league_lines[:2]
     league_y = 75
     for line in league_lines:
         center_text(draw, league_y, line, font_league, WHITE)
@@ -112,15 +109,13 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     # MATCH
     match_text = f"{home_team} vs {away_team}"
     match_lines = wrap_text(draw, match_text, font_match, 900)
-    if len(match_lines) > 2:
-        match_lines = match_lines[:2]
-
+    match_lines = match_lines[:2]
     match_y = 110
     for line in match_lines:
         center_text(draw, match_y, line, font_match, WHITE)
         match_y += 26
 
-    # LABELS
+    # LABELS + VALUES
     label_x = 35
     value_x = 205
 
@@ -154,7 +149,7 @@ def build_report_image(title, date_text, wins, lost, winrate):
     # TITLE
     center_text(draw, 20, str(title), font_title, GOLD)
 
-    # DATE / RANGE / X100
+    # DATE / RANGE / MILESTONE
     center_text(draw, 110, str(date_text), font_date, WHITE)
 
     label_x = 35
@@ -182,6 +177,7 @@ def upload_to_imgbb(image_path):
             files={"image": f},
             timeout=120,
         )
+    print("upload_to_imgbb:", res.status_code, res.text[:500])
     res.raise_for_status()
     data = res.json()
     return data["data"]["url"]
@@ -192,7 +188,7 @@ def upload_to_imgbb(image_path):
 # =============================
 def create_media_container(image_url, caption):
     response = requests.post(
-        f"https://graph.instagram.com/{IG_USER_ID}/media",
+        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media",
         data={
             "image_url": image_url,
             "caption": caption,
@@ -200,19 +196,21 @@ def create_media_container(image_url, caption):
         },
         timeout=120,
     )
+    print("create_media_container:", response.status_code, response.text)
     response.raise_for_status()
     return response.json()["id"]
 
 
 def get_container_status(creation_id):
     response = requests.get(
-        f"https://graph.instagram.com/{creation_id}",
+        f"https://graph.facebook.com/v25.0/{creation_id}",
         params={
             "fields": "id,status_code",
             "access_token": IG_ACCESS_TOKEN,
         },
         timeout=60,
     )
+    print("get_container_status:", response.status_code, response.text)
     response.raise_for_status()
     return response.json()
 
@@ -238,13 +236,14 @@ def wait_until_media_ready(creation_id, max_attempts=12, delay_seconds=4):
 
 def publish_media_container(creation_id):
     response = requests.post(
-        f"https://graph.instagram.com/{IG_USER_ID}/media_publish",
+        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media_publish",
         data={
             "creation_id": creation_id,
             "access_token": IG_ACCESS_TOKEN,
         },
         timeout=120,
     )
+    print("publish_media_container:", response.status_code, response.text)
     response.raise_for_status()
     return response.json()
 
