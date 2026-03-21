@@ -15,8 +15,9 @@ IMGBB_API_KEY = (os.getenv("IMGBB_API_KEY") or "").strip()
 # IMAGE SAVE
 # =============================
 def save_image(img, name):
-    path = f"/tmp/{name}_{int(time.time())}.png"
-    img.save(path, "PNG")
+    path = f"/tmp/{name}_{int(time.time())}.jpg"
+    rgb_img = img.convert("RGB")
+    rgb_img.save(path, "JPEG", quality=95)
     return path
 
 
@@ -168,10 +169,22 @@ def upload_to_imgbb(image_path):
             files={"image": f},
             timeout=120,
         )
-    print("upload_to_imgbb:", res.status_code, res.text[:500])
+
+    print("upload_to_imgbb status:", res.status_code)
+    print("upload_to_imgbb response:", res.text[:1000])
+
     res.raise_for_status()
     data = res.json()
-    return data["data"]["url"]
+
+    if not data.get("success"):
+        raise RuntimeError(f"imgbb upload failed: {data}")
+
+    image_url = str(data["data"].get("url") or "").strip()
+    if not image_url:
+        raise RuntimeError(f"imgbb direct URL missing: {data}")
+
+    print("IMGBB DIRECT URL:", image_url)
+    return image_url
 
 
 # =============================
@@ -187,7 +200,8 @@ def create_media_container(image_url, caption):
         },
         timeout=120,
     )
-    print("create_media_container:", response.status_code, response.text)
+    print("create_media_container status:", response.status_code)
+    print("create_media_container response:", response.text)
 
     if response.status_code != 200:
         raise RuntimeError(f"Meta create media error: {response.text}")
