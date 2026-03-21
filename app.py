@@ -15,9 +15,6 @@ IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
 IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
 
 
-# =============================
-# IMAGE SAVE
-# =============================
 def save_image(img, name):
     filename = f"{name}_{int(time.time())}.jpg"
     path = os.path.join(GENERATED_DIR, filename)
@@ -28,9 +25,6 @@ def save_image(img, name):
     return path, filename
 
 
-# =============================
-# FONT HELPERS
-# =============================
 def get_font(size: int, bold: bool = False):
     candidates = []
     if bold:
@@ -51,9 +45,6 @@ def get_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
-# =============================
-# TEXT HELPERS
-# =============================
 def wrap_text(draw, text, font, max_width):
     words = str(text or "").split()
     if not words:
@@ -81,18 +72,12 @@ def center_text(draw, y, text, font, fill):
     draw.text((540, y), str(text), fill=fill, font=font, anchor="ma")
 
 
-# =============================
-# COLORS
-# =============================
 GOLD = (242, 196, 78)
 WHITE = (255, 255, 255)
 GREEN = (120, 255, 120)
 RED = (255, 80, 80)
 
 
-# =============================
-# BUILD ALERT IMAGE
-# =============================
 def build_alert_image(league_key, home_team, away_team, minute, score, pick_text):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
@@ -136,9 +121,6 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     return save_image(img, "alert")
 
 
-# =============================
-# BUILD REPORT IMAGE
-# =============================
 def build_report_image(title, date_text, wins, lost, winrate):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
@@ -165,9 +147,6 @@ def build_report_image(title, date_text, wins, lost, winrate):
     return save_image(img, "report")
 
 
-# =============================
-# PUBLIC IMAGE ROUTE
-# =============================
 @app.route("/media/<filename>")
 def media_file(filename):
     safe_name = os.path.basename(filename)
@@ -184,9 +163,6 @@ def media_file(filename):
     return response
 
 
-# =============================
-# IMAGE URL HELPERS
-# =============================
 def build_public_base_url(req) -> str:
     forwarded_proto = (req.headers.get("X-Forwarded-Proto") or "").strip().lower()
     host = (req.headers.get("X-Forwarded-Host") or req.host or "").strip()
@@ -200,35 +176,6 @@ def build_public_base_url(req) -> str:
     return base_url
 
 
-def verify_public_image(image_url: str) -> None:
-    test_resp = requests.get(
-        image_url,
-        timeout=30,
-        headers={"User-Agent": "Mozilla/5.0"},
-        allow_redirects=True,
-    )
-
-    content_type = str(test_resp.headers.get("Content-Type") or "").lower()
-    content_len = len(test_resp.content or b"")
-
-    print("verify_public_image status:", test_resp.status_code)
-    print("verify_public_image content-type:", content_type)
-    print("verify_public_image content-length:", content_len)
-    print("verify_public_image final-url:", test_resp.url)
-
-    if test_resp.status_code != 200:
-        raise RuntimeError(f"Public image URL is not reachable: {test_resp.status_code}")
-
-    if "image/jpeg" not in content_type and "image/jpg" not in content_type:
-        raise RuntimeError(f"Public image URL is not JPEG. Content-Type={content_type}")
-
-    if content_len <= 1000:
-        raise RuntimeError("Public image content looks too small or invalid.")
-
-
-# =============================
-# INSTAGRAM / META HELPERS
-# =============================
 def create_media_container(image_url, caption):
     response = requests.post(
         f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media",
@@ -304,9 +251,6 @@ def publish_media_container(creation_id):
     return response.json()
 
 
-# =============================
-# CAPTIONS
-# =============================
 def sanitize_hashtag(text):
     cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
     return cleaned
@@ -358,9 +302,6 @@ Win Rate: {winrate}
     return base
 
 
-# =============================
-# ROUTES
-# =============================
 @app.route("/")
 def home():
     return "Instagram service running"
@@ -402,8 +343,6 @@ def post_alert():
 
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
-
-        verify_public_image(image_url)
 
         caption = build_alert_caption(
             league_key,
@@ -456,8 +395,6 @@ def post_report():
 
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
-
-        verify_public_image(image_url)
 
         caption = build_report_caption(
             title,
