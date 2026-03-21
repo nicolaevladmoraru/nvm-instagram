@@ -95,27 +95,21 @@ def build_alert_image(league_key, home_team, away_team, minute, score, pick_text
     font_label = get_font(20, bold=True)
     font_value = get_font(20, bold=True)
 
-    # TITLE
     center_text(draw, 20, "NVM LIVE ALERT", font_title, GOLD)
 
-    # LEAGUE
-    league_lines = wrap_text(draw, str(league_key), font_league, 900)
-    league_lines = league_lines[:2]
+    league_lines = wrap_text(draw, str(league_key), font_league, 900)[:2]
     league_y = 75
     for line in league_lines:
         center_text(draw, league_y, line, font_league, WHITE)
         league_y += 22
 
-    # MATCH
     match_text = f"{home_team} vs {away_team}"
-    match_lines = wrap_text(draw, match_text, font_match, 900)
-    match_lines = match_lines[:2]
+    match_lines = wrap_text(draw, match_text, font_match, 900)[:2]
     match_y = 110
     for line in match_lines:
         center_text(draw, match_y, line, font_match, WHITE)
         match_y += 26
 
-    # LABELS + VALUES
     label_x = 35
     value_x = 205
 
@@ -146,10 +140,7 @@ def build_report_image(title, date_text, wins, lost, winrate):
     font_label = get_font(20, bold=True)
     font_value = get_font(20, bold=True)
 
-    # TITLE
     center_text(draw, 20, str(title), font_title, GOLD)
-
-    # DATE / RANGE / MILESTONE
     center_text(draw, 110, str(date_text), font_date, WHITE)
 
     label_x = 35
@@ -188,7 +179,7 @@ def upload_to_imgbb(image_path):
 # =============================
 def create_media_container(image_url, caption):
     response = requests.post(
-        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media",
+        f"https://graph.instagram.com/{IG_USER_ID}/media",
         data={
             "image_url": image_url,
             "caption": caption,
@@ -197,13 +188,16 @@ def create_media_container(image_url, caption):
         timeout=120,
     )
     print("create_media_container:", response.status_code, response.text)
-    response.raise_for_status()
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Meta create media error: {response.text}")
+
     return response.json()["id"]
 
 
 def get_container_status(creation_id):
     response = requests.get(
-        f"https://graph.facebook.com/v25.0/{creation_id}",
+        f"https://graph.instagram.com/{creation_id}",
         params={
             "fields": "id,status_code",
             "access_token": IG_ACCESS_TOKEN,
@@ -211,7 +205,10 @@ def get_container_status(creation_id):
         timeout=60,
     )
     print("get_container_status:", response.status_code, response.text)
-    response.raise_for_status()
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Meta status error: {response.text}")
+
     return response.json()
 
 
@@ -236,7 +233,7 @@ def wait_until_media_ready(creation_id, max_attempts=12, delay_seconds=4):
 
 def publish_media_container(creation_id):
     response = requests.post(
-        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media_publish",
+        f"https://graph.instagram.com/{IG_USER_ID}/media_publish",
         data={
             "creation_id": creation_id,
             "access_token": IG_ACCESS_TOKEN,
@@ -244,7 +241,10 @@ def publish_media_container(creation_id):
         timeout=120,
     )
     print("publish_media_container:", response.status_code, response.text)
-    response.raise_for_status()
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Meta publish error: {response.text}")
+
     return response.json()
 
 
