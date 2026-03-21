@@ -1,16 +1,15 @@
 import os
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, abort, make_response
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-GENERATED_DIR = os.path.join(STATIC_DIR, "generated")
+GENERATED_DIR = os.path.join(BASE_DIR, "generated_media")
 
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+app = Flask(__name__)
 
 IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
 IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
@@ -24,7 +23,7 @@ def save_image(img, name):
     path = os.path.join(GENERATED_DIR, filename)
 
     rgb_img = img.convert("RGB")
-    rgb_img.save(path, "JPEG", quality=95)
+    rgb_img.save(path, "JPEG", quality=95, optimize=True)
 
     return path, filename
 
@@ -164,6 +163,67 @@ def build_report_image(title, date_text, wins, lost, winrate):
     draw.text((value_x, 280), str(winrate), fill=WHITE, font=font_value)
 
     return save_image(img, "report")
+
+
+# =============================
+# PUBLIC IMAGE ROUTE
+# =============================
+@app.route("/media/<filename>")
+def media_file(filename):
+    safe_name = os.path.basename(filename)
+    path = os.path.join(GENERATED_DIR, safe_name)
+
+    if not os.path.exists(path):
+        abort(404)
+
+    response = make_response(send_file(path, mimetype="image/jpeg", conditional=False))
+    response.headers["Content-Type"] = "image/jpeg"
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    response.headers["Content-Disposition"] = f'inline; filename="{safe_name}"'
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+# =============================
+# IMAGE URL HELPERS
+# =============================
+def build_public_base_url(req) -> str:
+    forwarded_proto = (req.headers.get("X-Forwarded-Proto") or "").strip().lower()
+    host = (req.headers.get("X-Forwarded-Host") or req.host or "").strip()
+
+    if forwarded_proto == "https" and host:
+        return f"https://{host}"
+
+    base_url = req.url_root.rstrip("/")
+    if base_url.startswith("http://"):
+        base_url = "https://" + base_url[len("http://"):]
+    return base_url
+
+
+def verify_public_image(image_url: str) -> None:
+    test_resp = requests.get(
+        image_url,
+        timeout=30,
+        headers={"User-Agent": "Mozilla/5.0"},
+        allow_redirects=True,
+    )
+
+    content_type = str(test_resp.headers.get("Content-Type") or "").lower()
+    content_len = len(test_resp.content or b"")
+
+    print("verify_public_image status:", test_resp.status_code)
+    print("verify_public_image content-type:", content_type)
+    print("verify_public_image content-length:", content_len)
+    print("verify_public_image final-url:", test_resp.url)
+
+    if test_resp.status_code != 200:
+        raise RuntimeError(f"Public image URL is not reachable: {test_resp.status_code}")
+
+    if "image/jpeg" not in content_type and "image/jpg" not in content_type:
+        raise RuntimeError(f"Public image URL is not JPEG. Content-Type={content_type}")
+
+    if content_len <= 1000:
+        raise RuntimeError("Public image content looks too small or invalid.")
 
 
 # =============================
@@ -337,13 +397,13 @@ def post_alert():
             pick_text,
         )
 
-        base_url = request.url_root.rstrip("/")
-        if base_url.startswith("http://"):
-            base_url = "https://" + base_url[len("http://"):]
+        base_url = build_public_base_url(request)
+        image_url = f"{base_url}/media/{filename}"
 
-        image_url = f"{base_url}/static/generated/{filename}"
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
+
+        verify_public_image(image_url)
 
         caption = build_alert_caption(
             league_key,
@@ -391,13 +451,13 @@ def post_report():
             winrate,
         )
 
-        base_url = request.url_root.rstrip("/")
-        if base_url.startswith("http://"):
-            base_url = "https://" + base_url[len("http://"):]
+        base_url = build_public_base_url(request)
+        image_url = f"{base_url}/media/{filename}"
 
-        image_url = f"{base_url}/static/generated/{filename}"
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
+
+        verify_public_image(image_url)
 
         caption = build_report_caption(
             title,
