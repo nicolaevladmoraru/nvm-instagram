@@ -1,18 +1,22 @@
 import os
 import time
-from flask import Flask, request, jsonify, abort, Response
+import hashlib
+from flask import Flask, request, jsonify
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_media")
-
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
 app = Flask(__name__)
 
 IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
 IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
+
+CLOUDINARY_CLOUD_NAME = (os.getenv("CLOUDINARY_CLOUD_NAME") or "").strip()
+CLOUDINARY_API_KEY = (os.getenv("CLOUDINARY_API_KEY") or "").strip()
+CLOUDINARY_API_SECRET = (os.getenv("CLOUDINARY_API_SECRET") or "").strip()
 
 
 def save_image(img, name):
@@ -147,43 +151,51 @@ def build_report_image(title, date_text, wins, lost, winrate):
     return save_image(img, "report")
 
 
-@app.route("/media/<filename>", methods=["GET", "HEAD"])
-def media_file(filename):
-    safe_name = os.path.basename(filename)
-    path = os.path.join(GENERATED_DIR, safe_name)
+def upload_to_cloudinary(image_path: str, public_id_prefix: str) -> str:
+    if not CLOUDINARY_CLOUD_NAME or not CLOUDINARY_API_KEY or not CLOUDINARY_API_SECRET:
+        raise RuntimeError("Cloudinary variables are missing.")
 
-    if not os.path.exists(path):
-        abort(404)
+    timestamp = str(int(time.time()))
+    public_id = f"nvm_instagram/{public_id_prefix}_{timestamp}"
 
-    with open(path, "rb") as f:
-        data = f.read()
-
-    headers = {
-        "Content-Type": "image/jpeg",
-        "Content-Length": str(len(data)),
-        "Cache-Control": "public, max-age=86400",
-        "Content-Disposition": f'inline; filename="{safe_name}"',
-        "X-Content-Type-Options": "nosniff",
-        "Accept-Ranges": "bytes",
+    params_to_sign = {
+        "public_id": public_id,
+        "timestamp": timestamp,
     }
 
-    if request.method == "HEAD":
-        return Response(status=200, headers=headers)
+    signature_base = "&".join(f"{k}={params_to_sign[k]}" for k in sorted(params_to_sign))
+    signature = hashlib.sha1(
+        f"{signature_base}{CLOUDINARY_API_SECRET}".encode("utf-8")
+    ).hexdigest()
 
-    return Response(data, status=200, headers=headers)
+    url = f"https://api.cloudinary.com/v1_1/{CLOUDINARY_CLOUD_NAME}/image/upload"
 
+    with open(image_path, "rb") as f:
+        response = requests.post(
+            url,
+            data={
+                "api_key": CLOUDINARY_API_KEY,
+                "timestamp": timestamp,
+                "public_id": public_id,
+                "signature": signature,
+                "resource_type": "image",
+            },
+            files={"file": f},
+            timeout=120,
+        )
 
-def build_public_base_url(req) -> str:
-    forwarded_proto = (req.headers.get("X-Forwarded-Proto") or "").strip().lower()
-    host = (req.headers.get("X-Forwarded-Host") or req.host or "").strip()
+    print("cloudinary_upload:", response.status_code, response.text[:1000])
 
-    if forwarded_proto == "https" and host:
-        return f"https://{host}"
+    if response.status_code != 200:
+        raise RuntimeError(f"Cloudinary upload failed: {response.text}")
 
-    base_url = req.url_root.rstrip("/")
-    if base_url.startswith("http://"):
-        base_url = "https://" + base_url[len("http://"):]
-    return base_url
+    data = response.json()
+    secure_url = str(data.get("secure_url") or "").strip()
+
+    if not secure_url:
+        raise RuntimeError("Cloudinary did not return secure_url.")
+
+    return secure_url
 
 
 def create_media_container(image_url, caption):
@@ -323,7 +335,9 @@ def debug_env():
         "ig_user_id": IG_USER_ID,
         "token_length": len(IG_ACCESS_TOKEN),
         "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
-        "generated_dir": GENERATED_DIR,
+        "cloudinary_cloud_name": CLOUDINARY_CLOUD_NAME,
+        "cloudinary_api_key_length": len(CLOUDINARY_API_KEY),
+        "cloudinary_secret_present": bool(CLOUDINARY_API_SECRET),
     })
 
 
@@ -348,9 +362,7 @@ def post_alert():
             pick_text,
         )
 
-        base_url = build_public_base_url(request)
-        image_url = f"{base_url}/media/{filename}"
-
+        image_url = upload_to_cloudinary(image_path, "alert")
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
 
@@ -400,9 +412,7 @@ def post_report():
             winrate,
         )
 
-        base_url = build_public_base_url(request)
-        image_url = f"{base_url}/media/{filename}"
-
+        image_url = upload_to_cloudinary(image_path, "report")
         print("IMAGE PATH:", image_path)
         print("IMAGE URL:", image_url)
 
