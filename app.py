@@ -167,11 +167,11 @@ def build_report_image(title, date_text, wins, lost, winrate):
 
 
 # =============================
-# INSTAGRAM HELPERS
+# INSTAGRAM / META HELPERS
 # =============================
 def create_media_container(image_url, caption):
     response = requests.post(
-        f"https://graph.instagram.com/{IG_USER_ID}/media",
+        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media",
         data={
             "image_url": image_url,
             "caption": caption,
@@ -192,7 +192,7 @@ def create_media_container(image_url, caption):
 
 def get_container_status(creation_id):
     response = requests.get(
-        f"https://graph.instagram.com/{creation_id}",
+        f"https://graph.facebook.com/v25.0/{creation_id}",
         params={
             "fields": "id,status_code",
             "access_token": IG_ACCESS_TOKEN,
@@ -200,24 +200,35 @@ def get_container_status(creation_id):
         timeout=60,
     )
     print("get_container_status:", response.status_code, response.text)
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Meta status error: {response.text}")
+
     return response.json()
 
 
-def wait_until_media_ready(creation_id):
+def wait_until_media_ready(creation_id, max_attempts=12, delay_seconds=4):
+    last_status = {}
     time.sleep(5)
 
-    for _ in range(10):
-        status = get_container_status(creation_id)
-        if status.get("status_code") == "FINISHED":
-            return status
-        time.sleep(3)
+    for _ in range(max_attempts):
+        last_status = get_container_status(creation_id)
+        status_code = str(last_status.get("status_code", "")).upper()
 
-    raise RuntimeError("Media not ready")
+        if status_code == "FINISHED":
+            return last_status
+
+        if status_code == "ERROR":
+            raise RuntimeError(f"Media container failed: {last_status}")
+
+        time.sleep(delay_seconds)
+
+    raise RuntimeError(f"Media not ready in time: {last_status}")
 
 
 def publish_media_container(creation_id):
     response = requests.post(
-        f"https://graph.instagram.com/{IG_USER_ID}/media_publish",
+        f"https://graph.facebook.com/v25.0/{IG_USER_ID}/media_publish",
         data={
             "creation_id": creation_id,
             "access_token": IG_ACCESS_TOKEN,
@@ -225,10 +236,10 @@ def publish_media_container(creation_id):
         timeout=120,
     )
 
-    print("publish:", response.status_code, response.text)
+    print("publish_media_container:", response.status_code, response.text)
 
     if response.status_code != 200:
-        raise RuntimeError(response.text)
+        raise RuntimeError(f"Meta publish error: {response.text}")
 
     return response.json()
 
@@ -310,13 +321,20 @@ def post_alert():
     try:
         data = request.get_json(force=True) or {}
 
+        league_key = str(data.get("league_key", "League"))
+        home_team = str(data.get("home_team", "Home"))
+        away_team = str(data.get("away_team", "Away"))
+        minute = str(data.get("minute", "00"))
+        score = str(data.get("score", "0 - 0"))
+        pick_text = str(data.get("pick_text", "Over 0.5 Goals"))
+
         image_path, filename = build_alert_image(
-            data.get("league_key", "League"),
-            data.get("home_team", "Home"),
-            data.get("away_team", "Away"),
-            data.get("minute", "00"),
-            data.get("score", "0 - 0"),
-            data.get("pick_text", "Over 0.5 Goals"),
+            league_key,
+            home_team,
+            away_team,
+            minute,
+            score,
+            pick_text,
         )
 
         base_url = request.url_root.rstrip("/")
@@ -328,23 +346,25 @@ def post_alert():
         print("IMAGE URL:", image_url)
 
         caption = build_alert_caption(
-            data.get("league_key", "League"),
-            data.get("home_team", "Home"),
-            data.get("away_team", "Away"),
-            data.get("minute", "00"),
-            data.get("score", "0 - 0"),
-            data.get("pick_text", "Over 0.5 Goals"),
+            league_key,
+            home_team,
+            away_team,
+            minute,
+            score,
+            pick_text,
         )
 
         creation_id = create_media_container(image_url, caption)
-        wait_until_media_ready(creation_id)
-        publish = publish_media_container(creation_id)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
 
         return jsonify({
             "ok": True,
             "image_path": image_path,
             "image_url": image_url,
-            "publish": publish
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
         })
 
     except Exception as e:
@@ -356,12 +376,19 @@ def post_report():
     try:
         data = request.get_json(force=True) or {}
 
+        title = str(data.get("title", "NVM DAILY REPORT"))
+        date_text = str(data.get("date_text", "01/01/2026"))
+        wins = str(data.get("wins", "0"))
+        lost = str(data.get("lost", "0"))
+        winrate = str(data.get("winrate", "0%"))
+        caption_message = str(data.get("caption_message", ""))
+
         image_path, filename = build_report_image(
-            data.get("title", "NVM DAILY REPORT"),
-            data.get("date_text", "01/01/2026"),
-            data.get("wins", "0"),
-            data.get("lost", "0"),
-            data.get("winrate", "0%"),
+            title,
+            date_text,
+            wins,
+            lost,
+            winrate,
         )
 
         base_url = request.url_root.rstrip("/")
@@ -373,23 +400,25 @@ def post_report():
         print("IMAGE URL:", image_url)
 
         caption = build_report_caption(
-            data.get("title", "NVM DAILY REPORT"),
-            data.get("date_text", "01/01/2026"),
-            data.get("wins", "0"),
-            data.get("lost", "0"),
-            data.get("winrate", "0%"),
-            data.get("caption_message", ""),
+            title,
+            date_text,
+            wins,
+            lost,
+            winrate,
+            caption_message,
         )
 
         creation_id = create_media_container(image_url, caption)
-        wait_until_media_ready(creation_id)
-        publish = publish_media_container(creation_id)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
 
         return jsonify({
             "ok": True,
             "image_path": image_path,
             "image_url": image_url,
-            "publish": publish
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
         })
 
     except Exception as e:
