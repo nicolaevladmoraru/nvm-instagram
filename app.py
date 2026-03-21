@@ -1,7 +1,6 @@
 import os
 import time
 import requests
-from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from PIL import Image, ImageDraw, ImageFont
 
@@ -22,208 +21,400 @@ def save_image(img, name):
 
 
 # =============================
-# FONT
+# FONT HELPERS
 # =============================
-def get_font(size, bold=False):
+def get_font(size: int, bold: bool = False):
+    candidates = []
     if bold:
-        path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        ]
     else:
-        path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        ]
 
-    return ImageFont.truetype(path, size=size)
+    for path in candidates:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size=size)
+
+    return ImageFont.load_default()
 
 
 # =============================
-# ALERT TEMPLATE (FINAL DESIGN)
+# TEXT HELPERS
 # =============================
-def build_alert_image(league, home, away, minute, score, pick):
+def wrap_text(draw, text, font, max_width):
+    words = str(text or "").split()
+    if not words:
+        return [""]
 
+    lines = []
+    current = words[0]
+
+    for word in words[1:]:
+        test = f"{current} {word}"
+        bbox = draw.textbbox((0, 0), test, font=font)
+        width = bbox[2] - bbox[0]
+
+        if width <= max_width:
+            current = test
+        else:
+            lines.append(current)
+            current = word
+
+    lines.append(current)
+    return lines
+
+
+def center_text(draw, y, text, font, fill):
+    draw.text((540, y), str(text), fill=fill, font=font, anchor="ma")
+
+
+# =============================
+# COLORS
+# =============================
+GOLD = (242, 196, 78)
+WHITE = (255, 255, 255)
+GREEN = (120, 255, 120)
+RED = (255, 80, 80)
+MINT = (242, 196, 78)
+
+
+# =============================
+# BUILD ALERT IMAGE
+# =============================
+def build_alert_image(league_key, home_team, away_team, minute, score, pick_text):
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    gold = (242, 196, 78)
-    white = (255, 255, 255)
-
-    # === FONTS ===
-    f_title = get_font(27, True)
-    f_league = get_font(19, True)
-    f_match = get_font(23, True)
-    f_label = get_font(20, True)
-    f_value = get_font(20, True)
-
-    center_x = 540
+    font_title = get_font(27, bold=True)
+    font_league = get_font(19, bold=True)
+    font_match = get_font(23, bold=True)
+    font_label = get_font(20, bold=True)
+    font_value = get_font(20, bold=True)
 
     # TITLE
-    draw.text((center_x, 20), "NVM LIVE ALERT", fill=gold, font=f_title, anchor="mm")
+    center_text(draw, 20, "NVM LIVE ALERT", font_title, GOLD)
 
     # LEAGUE
-    draw.text((center_x, 75), league, fill=white, font=f_league, anchor="mm")
+    league_lines = wrap_text(draw, str(league_key), font_league, 900)
+    if len(league_lines) > 2:
+        league_lines = league_lines[:2]
+
+    league_y = 75
+    for line in league_lines:
+        center_text(draw, league_y, line, font_league, WHITE)
+        league_y += 22
 
     # MATCH
-    match = f"{home} vs {away}"
-    draw.text((center_x, 110), match, fill=white, font=f_match, anchor="mm")
+    match_text = f"{home_team} vs {away_team}"
+    match_lines = wrap_text(draw, match_text, font_match, 900)
+    if len(match_lines) > 2:
+        match_lines = match_lines[:2]
+
+    match_y = 110
+    for line in match_lines:
+        center_text(draw, match_y, line, font_match, WHITE)
+        match_y += 26
 
     # LABELS
-    draw.text((35, 185), "MINUTE:", fill=gold, font=f_label)
-    draw.text((35, 220), "SCORE:", fill=gold, font=f_label)
-    draw.text((35, 280), "PICK:", fill=gold, font=f_label)
+    label_x = 35
+    value_x = 205
 
-    # VALUES
-    draw.text((200, 185), str(minute), fill=white, font=f_value)
-    draw.text((200, 220), str(score), fill=white, font=f_value)
-    draw.text((200, 280), str(pick), fill=gold, font=f_value)
+    draw.text((label_x, 185), "MINUTE:", fill=GOLD, font=font_label)
+    draw.text((label_x, 220), "SCORE:", fill=GOLD, font=font_label)
+    draw.text((label_x, 280), "PICK:", fill=GOLD, font=font_label)
+
+    draw.text((value_x, 185), str(minute), fill=WHITE, font=font_value)
+    draw.text((value_x, 220), str(score), fill=WHITE, font=font_value)
+
+    pick_lines = wrap_text(draw, str(pick_text), font_value, 420)
+    pick_y = 280
+    for idx, line in enumerate(pick_lines[:2]):
+        draw.text((value_x, pick_y + idx * 24), line, fill=GOLD, font=font_value)
 
     return save_image(img, "alert")
 
 
 # =============================
-# REPORT TEMPLATE
+# BUILD REPORT IMAGE
 # =============================
 def build_report_image(title, date_text, wins, lost, winrate):
-
     img = Image.open("template.png").convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    gold = (242, 196, 78)
-    white = (255, 255, 255)
-    green = (0, 255, 120)
-    red = (255, 80, 80)
-
-    f_title = get_font(27, True)
-    f_date = get_font(23, True)
-    f_label = get_font(20, True)
-    f_value = get_font(20, True)
-
-    center_x = 540
+    font_title = get_font(27, bold=True)
+    font_date = get_font(23, bold=True)
+    font_label = get_font(20, bold=True)
+    font_value = get_font(20, bold=True)
 
     # TITLE
-    draw.text((center_x, 20), title, fill=gold, font=f_title, anchor="mm")
+    center_text(draw, 20, str(title), font_title, GOLD)
 
-    # DATE / PERIOD
-    draw.text((center_x, 110), date_text, fill=white, font=f_date, anchor="mm")
+    # DATE / RANGE / X100
+    center_text(draw, 110, str(date_text), font_date, WHITE)
 
-    # STATS
-    draw.text((35, 185), "WINS:", fill=gold, font=f_label)
-    draw.text((200, 185), str(wins), fill=green, font=f_value)
+    label_x = 35
+    value_x = 205
 
-    draw.text((35, 220), "LOST:", fill=gold, font=f_label)
-    draw.text((200, 220), str(lost), fill=red, font=f_value)
+    draw.text((label_x, 185), "WINS:", fill=GREEN, font=font_label)
+    draw.text((label_x, 220), "LOST:", fill=RED, font=font_label)
+    draw.text((label_x, 280), "WIN RATE:", fill=GOLD, font=font_label)
 
-    draw.text((35, 280), "WIN RATE:", fill=gold, font=f_label)
-    draw.text((200, 280), str(winrate), fill=gold, font=f_value)
+    draw.text((value_x, 185), str(wins), fill=WHITE, font=font_value)
+    draw.text((value_x, 220), str(lost), fill=WHITE, font=font_value)
+    draw.text((value_x, 280), str(winrate), fill=WHITE, font=font_value)
 
     return save_image(img, "report")
 
 
 # =============================
-# UPLOAD
+# UPLOAD TO IMGBB
 # =============================
-def upload_to_imgbb(path):
-    with open(path, "rb") as f:
-        r = requests.post(
+def upload_to_imgbb(image_path):
+    with open(image_path, "rb") as f:
+        res = requests.post(
             "https://api.imgbb.com/1/upload",
             params={"key": IMGBB_API_KEY},
             files={"image": f},
+            timeout=120,
         )
-    return r.json()["data"]["url"]
+    res.raise_for_status()
+    data = res.json()
+    return data["data"]["url"]
 
 
 # =============================
-# INSTAGRAM POST
+# INSTAGRAM HELPERS
 # =============================
-def post_to_instagram(image_url, caption):
-
-    r = requests.post(
+def create_media_container(image_url, caption):
+    response = requests.post(
         f"https://graph.instagram.com/{IG_USER_ID}/media",
         data={
             "image_url": image_url,
             "caption": caption,
             "access_token": IG_ACCESS_TOKEN,
         },
+        timeout=120,
     )
+    response.raise_for_status()
+    return response.json()["id"]
 
-    creation_id = r.json()["id"]
 
+def get_container_status(creation_id):
+    response = requests.get(
+        f"https://graph.instagram.com/{creation_id}",
+        params={
+            "fields": "id,status_code",
+            "access_token": IG_ACCESS_TOKEN,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def wait_until_media_ready(creation_id, max_attempts=12, delay_seconds=4):
+    last_status = {}
     time.sleep(5)
 
-    requests.post(
+    for _ in range(max_attempts):
+        last_status = get_container_status(creation_id)
+        status_code = str(last_status.get("status_code", "")).upper()
+
+        if status_code == "FINISHED":
+            return last_status
+
+        if status_code == "ERROR":
+            raise RuntimeError(f"Media container failed: {last_status}")
+
+        time.sleep(delay_seconds)
+
+    raise RuntimeError(f"Media not ready in time: {last_status}")
+
+
+def publish_media_container(creation_id):
+    response = requests.post(
         f"https://graph.instagram.com/{IG_USER_ID}/media_publish",
         data={
             "creation_id": creation_id,
             "access_token": IG_ACCESS_TOKEN,
         },
+        timeout=120,
     )
+    response.raise_for_status()
+    return response.json()
 
 
 # =============================
-# ALERT ENDPOINT (FREE → IG)
+# CAPTIONS
 # =============================
+def sanitize_hashtag(text):
+    cleaned = "".join(ch for ch in str(text or "") if ch.isalnum())
+    return cleaned
+
+
+def build_alert_caption(league_key, home_team, away_team, minute, score, pick_text):
+    hashtags = [
+        f"#{sanitize_hashtag(home_team)}",
+        f"#{sanitize_hashtag(away_team)}",
+        "#FootballAlerts",
+        "#LiveAlerts",
+        "#FootballPredictions",
+        "#BettingTips",
+        "#NVMProSystem",
+    ]
+
+    return f"""NVM LIVE ALERT
+
+{league_key}
+{home_team} vs {away_team}
+
+Minute: {minute}
+Score: {score}
+Pick: {pick_text}
+
+📲 @nvm_access_engine_bot
+
+{" ".join(hashtags)}
+""".strip()
+
+
+def build_report_caption(title, date_text, wins, lost, winrate, caption_message=""):
+    base = f"""{title}
+
+{date_text}
+
+Wins: {wins}
+Lost: {lost}
+Win Rate: {winrate}
+
+📲 @nvm_access_engine_bot
+
+#FootballAlerts #LiveAlerts #BettingTips #FootballPredictions #NVMProSystem
+""".strip()
+
+    extra = str(caption_message or "").strip()
+    if extra:
+        return f"{base}\n\n{extra}"
+    return base
+
+
+# =============================
+# ROUTES
+# =============================
+@app.route("/")
+def home():
+    return "Instagram service running"
+
+
+@app.route("/debug-env")
+def debug_env():
+    return jsonify({
+        "has_imgbb": bool(IMGBB_API_KEY),
+        "ig_user_id": IG_USER_ID,
+        "token_length": len(IG_ACCESS_TOKEN),
+        "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
+    })
+
+
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
-    d = request.json
+    try:
+        data = request.get_json(force=True) or {}
 
-    img = build_alert_image(
-        d["league"],
-        d["home"],
-        d["away"],
-        d["minute"],
-        d["score"],
-        d["pick"],
-    )
+        league_key = str(data.get("league_key", "")).strip() or "Live Football"
+        home_team = str(data.get("home_team", "")).strip() or "Home"
+        away_team = str(data.get("away_team", "")).strip() or "Away"
+        minute = str(data.get("minute", "")).strip() or "00"
+        score = str(data.get("score", "")).strip() or "0 - 0"
+        pick_text = str(data.get("pick_text", "")).strip() or "Over 0.5 Goals"
 
-    url = upload_to_imgbb(img)
+        image_path = build_alert_image(
+            league_key=league_key,
+            home_team=home_team,
+            away_team=away_team,
+            minute=minute,
+            score=score,
+            pick_text=pick_text,
+        )
 
-    caption = f"""
-⚽ LIVE ALERT
+        image_url = upload_to_imgbb(image_path)
+        caption = build_alert_caption(
+            league_key=league_key,
+            home_team=home_team,
+            away_team=away_team,
+            minute=minute,
+            score=score,
+            pick_text=pick_text,
+        )
 
-{d["home"]} vs {d["away"]}
-Minute: {d["minute"]}
-Score: {d["score"]}
-Pick: {d["pick"]}
+        creation_id = create_media_container(image_url, caption)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
 
-📲 @nvm_access_engine_bot
-"""
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "caption": caption,
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
+        })
 
-    post_to_instagram(url, caption)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
-    return {"ok": True}
 
-
-# =============================
-# DAILY / WEEKLY / MONTHLY / MILESTONE
-# =============================
 @app.route("/post-report", methods=["POST"])
 def post_report():
+    try:
+        data = request.get_json(force=True) or {}
 
-    d = request.json
+        title = str(data.get("title", "NVM DAILY REPORT")).strip()
+        date_text = str(data.get("date_text", "")).strip() or "01/01/2026"
+        wins = str(data.get("wins", "0")).strip()
+        lost = str(data.get("lost", "0")).strip()
+        winrate = str(data.get("winrate", "0%")).strip()
+        caption_message = str(data.get("caption_message", "")).strip()
 
-    img = build_report_image(
-        d["title"],      # NVM DAILY REPORT / WEEKLY / etc
-        d["date"],       # 21/03/2026 or range
-        d["wins"],
-        d["lost"],
-        d["winrate"],
-    )
+        image_path = build_report_image(
+            title=title,
+            date_text=date_text,
+            wins=wins,
+            lost=lost,
+            winrate=winrate,
+        )
 
-    url = upload_to_imgbb(img)
+        image_url = upload_to_imgbb(image_path)
+        caption = build_report_caption(
+            title=title,
+            date_text=date_text,
+            wins=wins,
+            lost=lost,
+            winrate=winrate,
+            caption_message=caption_message,
+        )
 
-    caption = f"""
-{d["title"]}
+        creation_id = create_media_container(image_url, caption)
+        status_result = wait_until_media_ready(creation_id)
+        publish_result = publish_media_container(creation_id)
 
-{d["date"]}
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "caption": caption,
+            "creation_id": creation_id,
+            "status_result": status_result,
+            "publish_result": publish_result,
+        })
 
-Wins: {d["wins"]}
-Lost: {d["lost"]}
-Win Rate: {d["winrate"]}
-
-📲 @nvm_access_engine_bot
-"""
-
-    post_to_instagram(url, caption)
-
-    return {"ok": True}
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# =============================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
