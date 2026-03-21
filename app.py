@@ -1,24 +1,28 @@
 import os
 import time
+from flask import Flask, request, jsonify, send_file, abort
 import requests
-from flask import Flask, request, jsonify
 from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
 IG_ACCESS_TOKEN = (os.getenv("IG_ACCESS_TOKEN") or "").strip()
 IG_USER_ID = (os.getenv("IG_USER_ID") or "").strip()
-IMGBB_API_KEY = (os.getenv("IMGBB_API_KEY") or "").strip()
+
+TMP_DIR = "/tmp"
 
 
 # =============================
 # IMAGE SAVE
 # =============================
 def save_image(img, name):
-    path = f"/tmp/{name}_{int(time.time())}.jpg"
+    filename = f"{name}_{int(time.time())}.jpg"
+    path = os.path.join(TMP_DIR, filename)
+
     rgb_img = img.convert("RGB")
     rgb_img.save(path, "JPEG", quality=95)
-    return path
+
+    return path, filename
 
 
 # =============================
@@ -159,46 +163,6 @@ def build_report_image(title, date_text, wins, lost, winrate):
 
 
 # =============================
-# UPLOAD TO IMGBB
-# =============================
-def upload_to_imgbb(image_path):
-    with open(image_path, "rb") as f:
-        res = requests.post(
-            "https://api.imgbb.com/1/upload",
-            params={"key": IMGBB_API_KEY},
-            files={"image": f},
-            timeout=120,
-        )
-
-    print("upload_to_imgbb status:", res.status_code)
-    print("upload_to_imgbb response:", res.text[:1500])
-
-    res.raise_for_status()
-    data = res.json()
-
-    if not data.get("success"):
-        raise RuntimeError(f"imgbb upload failed: {data}")
-
-    # Prefer the most direct raw image URL available
-    image_url = (
-        str(((data.get("data") or {}).get("image") or {}).get("url") or "").strip()
-        or str((data.get("data") or {}).get("url") or "").strip()
-        or str((data.get("data") or {}).get("display_url") or "").strip()
-    )
-
-    if not image_url:
-        raise RuntimeError(f"imgbb direct URL missing: {data}")
-
-    print("IMGBB DIRECT URL:", image_url)
-
-    # Quick sanity check that Meta can consume a normal image URL
-    if not image_url.lower().startswith(("http://", "https://")):
-        raise RuntimeError(f"Invalid image URL from imgbb: {image_url}")
-
-    return image_url
-
-
-# =============================
 # INSTAGRAM HELPERS
 # =============================
 def create_media_container(image_url, caption):
@@ -330,6 +294,20 @@ Win Rate: {winrate}
 
 
 # =============================
+# PUBLIC MEDIA ROUTE
+# =============================
+@app.route("/media/<filename>")
+def serve_media(filename):
+    safe_name = os.path.basename(filename)
+    path = os.path.join(TMP_DIR, safe_name)
+
+    if not os.path.exists(path):
+        abort(404)
+
+    return send_file(path, mimetype="image/jpeg", max_age=300)
+
+
+# =============================
 # ROUTES
 # =============================
 @app.route("/")
@@ -340,7 +318,6 @@ def home():
 @app.route("/debug-env")
 def debug_env():
     return jsonify({
-        "has_imgbb": bool(IMGBB_API_KEY),
         "ig_user_id": IG_USER_ID,
         "token_length": len(IG_ACCESS_TOKEN),
         "token_prefix": IG_ACCESS_TOKEN[:8] if IG_ACCESS_TOKEN else "",
@@ -359,7 +336,7 @@ def post_alert():
         score = str(data.get("score", "")).strip() or "0 - 0"
         pick_text = str(data.get("pick_text", "")).strip() or "Over 0.5 Goals"
 
-        image_path = build_alert_image(
+        image_path, filename = build_alert_image(
             league_key=league_key,
             home_team=home_team,
             away_team=away_team,
@@ -368,7 +345,9 @@ def post_alert():
             pick_text=pick_text,
         )
 
-        image_url = upload_to_imgbb(image_path)
+        image_url = f"{request.url_root.rstrip('/')}/media/{filename}"
+        print("PUBLIC IMAGE URL:", image_url)
+
         caption = build_alert_caption(
             league_key=league_key,
             home_team=home_team,
@@ -384,6 +363,7 @@ def post_alert():
 
         return jsonify({
             "ok": True,
+            "image_path": image_path,
             "image_url": image_url,
             "caption": caption,
             "creation_id": creation_id,
@@ -407,7 +387,7 @@ def post_report():
         winrate = str(data.get("winrate", "0%")).strip()
         caption_message = str(data.get("caption_message", "")).strip()
 
-        image_path = build_report_image(
+        image_path, filename = build_report_image(
             title=title,
             date_text=date_text,
             wins=wins,
@@ -415,7 +395,9 @@ def post_report():
             winrate=winrate,
         )
 
-        image_url = upload_to_imgbb(image_path)
+        image_url = f"{request.url_root.rstrip('/')}/media/{filename}"
+        print("PUBLIC IMAGE URL:", image_url)
+
         caption = build_report_caption(
             title=title,
             date_text=date_text,
@@ -431,6 +413,7 @@ def post_report():
 
         return jsonify({
             "ok": True,
+            "image_path": image_path,
             "image_url": image_url,
             "caption": caption,
             "creation_id": creation_id,
