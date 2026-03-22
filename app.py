@@ -82,6 +82,7 @@ def get_truetype_font(size: int, bold: bool = False):
     print(f"[FONT] No truetype font found | size={size} | bold={bold}")
     return None
 
+
 # ================================
 # TEXT HELPERS
 # ================================
@@ -112,7 +113,7 @@ def wrap_text_by_pixels(draw: ImageDraw.ImageDraw, text: str, font, max_width: i
 
 
 def draw_scaled_bitmap_text(
-    base_img: Image.Image,
+    base_img,
     x: int,
     y: int,
     text: str,
@@ -123,7 +124,7 @@ def draw_scaled_bitmap_text(
 ):
     default_font = ImageFont.load_default()
 
-    temp_img = Image.new("RGBA", (4000, 1200), (0, 0, 0, 0))
+    temp_img = Image.new("RGBA", (4000, 1400), (0, 0, 0, 0))
     temp_draw = ImageDraw.Draw(temp_img)
 
     stroke_offsets = [
@@ -165,8 +166,8 @@ def draw_scaled_bitmap_text(
 
 
 def draw_text(
-    base_img: Image.Image,
-    draw: ImageDraw.ImageDraw,
+    base_img,
+    draw,
     x: int,
     y: int,
     text: str,
@@ -203,10 +204,11 @@ def draw_text(
     )
     return ImageFont.load_default()
 
+
 # ================================
-# IMAGE BUILD
+# ALERT IMAGE
 # ================================
-def build_image(league, home, away, minute, score, pick):
+def build_alert_image(league, home, away, minute, score, pick):
     template_path = "template.png"
 
     if os.path.exists(template_path):
@@ -216,7 +218,7 @@ def build_image(league, home, away, minute, score, pick):
 
     draw = ImageDraw.Draw(img)
     w, h = img.size
-    print(f"[IMAGE] template_size={img.size}")
+    print(f"[ALERT IMAGE] template_size={img.size}")
 
     gold = (242, 196, 78)
     white = (255, 255, 255)
@@ -224,9 +226,6 @@ def build_image(league, home, away, minute, score, pick):
 
     center_x = int(w * 0.50)
 
-    # ================================
-    # SIZES
-    # ================================
     title_size = int(h * 0.044)
     league_size = int(h * 0.042)
     match_size = int(h * 0.062)
@@ -241,9 +240,6 @@ def build_image(league, home, away, minute, score, pick):
     value_fallback_h = int(h * 0.058)
     pick_fallback_h = int(h * 0.046)
 
-    # ================================
-    # TITLE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -260,9 +256,6 @@ def build_image(league, home, away, minute, score, pick):
 
     wrap_font = get_truetype_font(max(22, int(h * 0.032)), bold=True) or ImageFont.load_default()
 
-    # ================================
-    # LEAGUE - closer to title
-    # ================================
     league_lines = wrap_text_by_pixels(draw, str(league), wrap_font, int(w * 0.68))
     league_y = int(h * 0.145)
     for i, line in enumerate(league_lines[:2]):
@@ -280,9 +273,6 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=league_fallback_h,
         )
 
-    # ================================
-    # MATCH - bigger
-    # ================================
     match_text = f"{home} vs {away}"
     match_lines = wrap_text_by_pixels(draw, match_text, wrap_font, int(w * 0.74))
     match_y = int(h * 0.245)
@@ -301,15 +291,11 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=match_fallback_h,
         )
 
-    # ================================
-    # LEFT INFO BLOCK - moved up and tighter
-    # ================================
     x_label = int(w * 0.08)
     x_value = int(w * 0.30)
     y_start = int(h * 0.40)
     row_gap = int(h * 0.095)
 
-    # MINUTE
     draw_text(
         base_img=img,
         draw=draw,
@@ -337,7 +323,6 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=value_fallback_h,
     )
 
-    # SCORE
     draw_text(
         base_img=img,
         draw=draw,
@@ -365,7 +350,6 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=value_fallback_h,
     )
 
-    # PICK
     draw_text(
         base_img=img,
         draw=draw,
@@ -380,7 +364,6 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=label_fallback_h,
     )
 
-    # PICK VALUE - closer and kept left of logo
     pick_wrap_font = get_truetype_font(max(20, int(h * 0.027)), bold=True) or ImageFont.load_default()
     pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.18))
     for i, line in enumerate(pick_lines[:3]):
@@ -400,8 +383,189 @@ def build_image(league, home, away, minute, score, pick):
 
     filename = f"/tmp/alert_{int(time.time())}.jpg"
     img.convert("RGB").save(filename, "JPEG", quality=95)
-    print(f"[IMAGE] Saved preview to {filename} | final_size={img.size}")
+    print(f"[ALERT IMAGE] Saved to {filename} | final_size={img.size}")
     return filename
+
+
+# ================================
+# REPORT IMAGE
+# ================================
+def build_report_image(report_type, title, date_text, wins, lost, winrate):
+    template_path = "template.png"
+
+    if os.path.exists(template_path):
+        img = Image.open(template_path).convert("RGBA")
+    else:
+        img = Image.new("RGBA", (1024, 1024), (10, 15, 35, 255))
+
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    print(f"[REPORT IMAGE] template_size={img.size}")
+
+    gold = (242, 196, 78)
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+
+    center_x = int(w * 0.50)
+
+    # sizes
+    title_size = int(h * 0.046)
+    subtitle_size = int(h * 0.034)
+    label_size = int(h * 0.050)
+    value_size = int(h * 0.064)
+    footer_size = int(h * 0.032)
+
+    title_fallback_h = int(h * 0.050)
+    subtitle_fallback_h = int(h * 0.038)
+    label_fallback_h = int(h * 0.052)
+    value_fallback_h = int(h * 0.068)
+    footer_fallback_h = int(h * 0.034)
+
+    if report_type == "daily":
+        header_text = "NVM DAILY REPORT"
+    elif report_type == "weekly":
+        header_text = "NVM WEEKLY REPORT"
+    elif report_type == "monthly":
+        header_text = "NVM MONTHLY REPORT"
+    elif report_type == "milestone":
+        header_text = "NVM MILESTONE"
+    else:
+        header_text = str(title or "NVM REPORT")
+
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=center_x,
+        y=int(h * 0.070),
+        text=header_text,
+        size=title_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+        fallback_height=title_fallback_h,
+    )
+
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=center_x,
+        y=int(h * 0.155),
+        text=str(date_text),
+        size=subtitle_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+        fallback_height=subtitle_fallback_h,
+    )
+
+    x_label = int(w * 0.10)
+    x_value = int(w * 0.42)
+    y_start = int(h * 0.34)
+    row_gap = int(h * 0.12)
+
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start,
+        text="WINS:",
+        size=label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
+    )
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start,
+        text=str(wins),
+        size=value_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=value_fallback_h,
+    )
+
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start + row_gap,
+        text="LOST:",
+        size=label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
+    )
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start + row_gap,
+        text=str(lost),
+        size=value_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=value_fallback_h,
+    )
+
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start + row_gap * 2,
+        text="WIN RATE:",
+        size=label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
+    )
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start + row_gap * 2,
+        text=str(winrate),
+        size=value_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=value_fallback_h,
+    )
+
+    footer_text = "@nvm_access_engine_bot"
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=center_x,
+        y=int(h * 0.88),
+        text=footer_text,
+        size=footer_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+        fallback_height=footer_fallback_h,
+    )
+
+    filename = f"/tmp/report_{int(time.time())}.jpg"
+    img.convert("RGB").save(filename, "JPEG", quality=95)
+    print(f"[REPORT IMAGE] Saved to {filename} | final_size={img.size}")
+    return filename
+
 
 # ================================
 # CLOUDINARY
@@ -409,6 +573,7 @@ def build_image(league, home, away, minute, score, pick):
 def upload_image(image_path):
     result = cloudinary.uploader.upload(image_path, folder="nvm_instagram")
     return result["secure_url"]
+
 
 # ================================
 # TOKEN
@@ -420,6 +585,7 @@ def get_active_token():
             if token:
                 return token
     return IG_ACCESS_TOKEN
+
 
 # ================================
 # INSTAGRAM POST
@@ -444,10 +610,7 @@ def post_to_instagram(image_url, caption):
     for _ in range(12):
         status_response = requests.get(
             f"{BASE_URL}/{creation_id}",
-            params={
-                "fields": "status_code",
-                "access_token": access_token
-            },
+            params={"fields": "status_code", "access_token": access_token},
             timeout=60
         ).json()
 
@@ -470,6 +633,7 @@ def post_to_instagram(image_url, caption):
     publish_response = requests.post(publish_url, data=publish_payload, timeout=120).json()
     return publish_response
 
+
 # ================================
 # META LOGIN
 # ================================
@@ -482,6 +646,7 @@ def meta_login():
         f"&scope=pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish"
     )
     return redirect(login_url)
+
 
 @app.route("/meta-callback")
 def meta_callback():
@@ -517,6 +682,7 @@ def meta_callback():
         "access_token": access_token
     })
 
+
 @app.route("/get-token")
 def get_token():
     if not os.path.exists(TOKEN_FILE):
@@ -527,12 +693,14 @@ def get_token():
 
     return jsonify({"ok": True, "token": token})
 
+
 # ================================
 # ROUTES
 # ================================
 @app.route("/")
 def home():
     return "NVM INSTAGRAM LIVE READY"
+
 
 @app.route("/preview-alert", methods=["POST"])
 def preview_alert():
@@ -546,7 +714,7 @@ def preview_alert():
         score = data.get("score", "")
         pick = data.get("pick", data.get("pick_text", ""))
 
-        image_path = build_image(league, home, away, minute, score, pick)
+        image_path = build_alert_image(league, home, away, minute, score, pick)
         image_url = upload_image(image_path)
 
         return jsonify({
@@ -554,12 +722,12 @@ def preview_alert():
             "preview_only": True,
             "image_url": image_url
         })
-
     except Exception as e:
         return jsonify({
             "ok": False,
             "error": str(e)
         }), 500
+
 
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
@@ -584,7 +752,7 @@ def post_alert():
                 f"@nvm_access_engine_bot"
             )
 
-        image_path = build_image(league, home, away, minute, score, pick)
+        image_path = build_alert_image(league, home, away, minute, score, pick)
         image_url = upload_image(image_path)
         result = post_to_instagram(image_url, caption)
 
@@ -593,12 +761,92 @@ def post_alert():
             "image_url": image_url,
             "result": result
         })
-
     except Exception as e:
         return jsonify({
             "ok": False,
             "error": str(e)
         }), 500
+
+
+@app.route("/preview-report", methods=["POST"])
+def preview_report():
+    try:
+        data = request.get_json(force=True) or {}
+
+        report_type = str(data.get("report_type", "daily"))
+        title = str(data.get("title", "NVM REPORT"))
+        date_text = str(data.get("date_text", ""))
+        wins = str(data.get("wins", "0"))
+        lost = str(data.get("lost", "0"))
+        winrate = str(data.get("winrate", "0%"))
+
+        image_path = build_report_image(
+            report_type=report_type,
+            title=title,
+            date_text=date_text,
+            wins=wins,
+            lost=lost,
+            winrate=winrate,
+        )
+        image_url = upload_image(image_path)
+
+        return jsonify({
+            "ok": True,
+            "preview_only": True,
+            "image_url": image_url
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/post-report", methods=["POST"])
+def post_report():
+    try:
+        data = request.get_json(force=True) or {}
+
+        report_type = str(data.get("report_type", "daily"))
+        title = str(data.get("title", "NVM REPORT"))
+        date_text = str(data.get("date_text", ""))
+        wins = str(data.get("wins", "0"))
+        lost = str(data.get("lost", "0"))
+        winrate = str(data.get("winrate", "0%"))
+        caption = str(data.get("caption_message", "")).strip()
+
+        if not caption:
+            caption = (
+                f"{title}\n"
+                f"{date_text}\n\n"
+                f"Wins: {wins}\n"
+                f"Lost: {lost}\n"
+                f"Win Rate: {winrate}\n\n"
+                f"@nvm_access_engine_bot"
+            )
+
+        image_path = build_report_image(
+            report_type=report_type,
+            title=title,
+            date_text=date_text,
+            wins=wins,
+            lost=lost,
+            winrate=winrate,
+        )
+        image_url = upload_image(image_path)
+        result = post_to_instagram(image_url, caption)
+
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
