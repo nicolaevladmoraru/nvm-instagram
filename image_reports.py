@@ -23,7 +23,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     center_x = int(w * 0.50)
 
     # ================================
-    # HEADER TEXT
+    # HEADER
     # ================================
     if report_type == "daily":
         header_text = "NVM DAILY REPORT"
@@ -45,8 +45,8 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     stat_label_size = int(h * 0.044)
     stat_value_size = int(h * 0.066)
 
-    winrate_label_size = int(h * 0.046)
-    winrate_value_size = int(h * 0.110)
+    winrate_label_size = int(h * 0.045)
+    winrate_value_size = int(h * 0.105)
 
     title_fallback_h = int(h * 0.054)
     date_fallback_h = int(h * 0.038)
@@ -55,7 +55,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     stat_value_fallback_h = int(h * 0.070)
 
     winrate_label_fallback_h = int(h * 0.048)
-    winrate_value_fallback_h = int(h * 0.115)
+    winrate_value_fallback_h = int(h * 0.110)
 
     # ================================
     # TITLE
@@ -74,7 +74,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
-    # DATE / PERIOD
+    # DATE
     draw_text(
         base_img=img,
         draw=draw,
@@ -90,7 +90,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     )
 
     # ================================
-    # LEFT STATS BLOCK
+    # LEFT STATS
     # ================================
     x_label = int(w * 0.11)
     x_value = int(w * 0.42)
@@ -99,69 +99,25 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     row_gap = int(h * 0.12)
 
     # WINS
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_label,
-        y=y_start,
-        text="WINS:",
-        size=stat_label_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_label_fallback_h,
-    )
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_value,
-        y=y_start,
-        text=str(wins),
-        size=stat_value_size,
-        fill=white,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_value_fallback_h,
-    )
+    draw_text(img, draw, x_label, y_start, "WINS:", stat_label_size, gold, black, True, "lt", stat_label_fallback_h)
+    draw_text(img, draw, x_value, y_start, str(wins), stat_value_size, white, black, True, "lt", stat_value_fallback_h)
 
     # LOST
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_label,
-        y=y_start + row_gap,
-        text="LOST:",
-        size=stat_label_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_label_fallback_h,
-    )
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_value,
-        y=y_start + row_gap,
-        text=str(lost),
-        size=stat_value_size,
-        fill=white,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_value_fallback_h,
-    )
+    draw_text(img, draw, x_label, y_start + row_gap, "LOST:", stat_label_size, gold, black, True, "lt", stat_label_fallback_h)
+    draw_text(img, draw, x_value, y_start + row_gap, str(lost), stat_value_size, white, black, True, "lt", stat_value_fallback_h)
 
     # ================================
-    # WIN RATE HIGHLIGHT (PRO STYLE)
+    # WIN RATE (FINAL PERFECT POSITION)
     # ================================
+    winrate_x = int(w * 0.33)   # mutat puțin spre dreapta
+    winrate_label_y = int(h * 0.60)
+    winrate_value_y = int(h * 0.70)  # ridicat clar peste Telegram
+
     draw_text(
         base_img=img,
         draw=draw,
-        x=int(w * 0.36),
-        y=int(h * 0.64),
+        x=winrate_x,
+        y=winrate_label_y,
         text="WIN RATE",
         size=winrate_label_size,
         fill=gold,
@@ -174,8 +130,8 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     draw_text(
         base_img=img,
         draw=draw,
-        x=int(w * 0.36),
-        y=int(h * 0.76),
+        x=winrate_x,
+        y=winrate_value_y,
         text=str(winrate),
         size=winrate_value_size,
         fill=white,
