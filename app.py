@@ -388,7 +388,7 @@ def build_alert_image(league, home, away, minute, score, pick):
 
 
 # ================================
-# REPORT IMAGE
+# REPORT IMAGE - PREMIUM
 # ================================
 def build_report_image(report_type, title, date_text, wins, lost, winrate):
     template_path = "template.png"
@@ -408,19 +408,6 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
 
     center_x = int(w * 0.50)
 
-    # sizes
-    title_size = int(h * 0.046)
-    subtitle_size = int(h * 0.034)
-    label_size = int(h * 0.050)
-    value_size = int(h * 0.064)
-    footer_size = int(h * 0.032)
-
-    title_fallback_h = int(h * 0.050)
-    subtitle_fallback_h = int(h * 0.038)
-    label_fallback_h = int(h * 0.052)
-    value_fallback_h = int(h * 0.068)
-    footer_fallback_h = int(h * 0.034)
-
     if report_type == "daily":
         header_text = "NVM DAILY REPORT"
     elif report_type == "weekly":
@@ -432,11 +419,25 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     else:
         header_text = str(title or "NVM REPORT")
 
+    title_size = int(h * 0.048)
+    date_size = int(h * 0.034)
+    label_size = int(h * 0.046)
+    value_size = int(h * 0.060)
+    winrate_label_size = int(h * 0.050)
+    winrate_value_size = int(h * 0.090)
+
+    title_fallback_h = int(h * 0.052)
+    date_fallback_h = int(h * 0.038)
+    label_fallback_h = int(h * 0.050)
+    value_fallback_h = int(h * 0.064)
+    winrate_label_fallback_h = int(h * 0.054)
+    winrate_value_fallback_h = int(h * 0.094)
+
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.070),
+        y=int(h * 0.065),
         text=header_text,
         size=title_size,
         fill=gold,
@@ -450,20 +451,20 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.155),
+        y=int(h * 0.145),
         text=str(date_text),
-        size=subtitle_size,
+        size=date_size,
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="mm",
-        fallback_height=subtitle_fallback_h,
+        fallback_height=date_fallback_h,
     )
 
-    x_label = int(w * 0.10)
+    x_label = int(w * 0.11)
     x_value = int(w * 0.42)
-    y_start = int(h * 0.34)
-    row_gap = int(h * 0.12)
+    y_start = int(h * 0.33)
+    row_gap = int(h * 0.11)
 
     draw_text(
         base_img=img,
@@ -522,43 +523,29 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     draw_text(
         base_img=img,
         draw=draw,
-        x=x_label,
-        y=y_start + row_gap * 2,
-        text="WIN RATE:",
-        size=label_size,
+        x=center_x,
+        y=int(h * 0.63),
+        text="WIN RATE",
+        size=winrate_label_size,
         fill=gold,
         stroke_fill=black,
         bold=True,
-        anchor="lt",
-        fallback_height=label_fallback_h,
-    )
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_value,
-        y=y_start + row_gap * 2,
-        text=str(winrate),
-        size=value_size,
-        fill=white,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=value_fallback_h,
+        anchor="mm",
+        fallback_height=winrate_label_fallback_h,
     )
 
-    footer_text = "@nvm_access_engine_bot"
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.88),
-        text=footer_text,
-        size=footer_size,
+        y=int(h * 0.74),
+        text=str(winrate),
+        size=winrate_value_size,
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="mm",
-        fallback_height=footer_fallback_h,
+        fallback_height=winrate_value_fallback_h,
     )
 
     filename = f"/tmp/report_{int(time.time())}.jpg"
