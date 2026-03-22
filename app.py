@@ -1,209 +1,203 @@
 import os
 import time
 import requests
-from flask import Flask, request, jsonify, redirect
-from PIL import Image, ImageDraw, ImageFont
 import cloudinary
 import cloudinary.uploader
+from flask import Flask, request, jsonify
+from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
-# =============================
-# ENV
-# =============================
-META_APP_ID = os.getenv("META_APP_ID")
-META_APP_SECRET = os.getenv("META_APP_SECRET")
-META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
+# ================================
+# CONFIG
+# ================================
+CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+API_KEY = os.getenv("CLOUDINARY_API_KEY")
+API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
 
-IG_USER_ID = os.getenv("IG_USER_ID")
 IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
+IG_USER_ID = os.getenv("IG_USER_ID")
 
-# =============================
-# CLOUDINARY CONFIG
-# =============================
+BASE_URL = "https://graph.facebook.com/v19.0"
+
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+    cloud_name=CLOUD_NAME,
+    api_key=API_KEY,
+    api_secret=API_SECRET
 )
 
-# =============================
-# TOKEN STORAGE
-# =============================
-TOKEN_FILE = "/tmp/meta_token.txt"
-
-
-# =============================
-# META LOGIN
-# =============================
-@app.route("/meta-login")
-def meta_login():
-    url = (
-        f"https://www.facebook.com/v19.0/dialog/oauth"
-        f"?client_id={META_APP_ID}"
-        f"&redirect_uri={META_REDIRECT_URI}"
-        f"&scope=instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
-    )
-    return redirect(url)
-
-
-@app.route("/meta-callback")
-def meta_callback():
-    code = request.args.get("code")
-
-    if not code:
-        return "No code"
-
-    url = (
-        f"https://graph.facebook.com/v19.0/oauth/access_token"
-        f"?client_id={META_APP_ID}"
-        f"&redirect_uri={META_REDIRECT_URI}"
-        f"&client_secret={META_APP_SECRET}"
-        f"&code={code}"
-    )
-
-    res = requests.get(url).json()
-
-    if "access_token" not in res:
-        return res
-
-    token = res["access_token"]
-
-    with open(TOKEN_FILE, "w") as f:
-        f.write(token)
-
-    return {
-        "ok": True,
-        "access_token": token
-    }
-
-
-@app.route("/get-token")
-def get_token():
-    if not os.path.exists(TOKEN_FILE):
-        return {"error": "no token"}
-
-    with open(TOKEN_FILE) as f:
-        return {"token": f.read()}
-
-
-# =============================
-# FONT
-# =============================
+# ================================
+# FONT SAFE (NO ERRORS)
+# ================================
 def get_font(size, bold=False):
-    path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    return ImageFont.truetype(path, size)
+    paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+    ]
 
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except:
+                continue
 
-# =============================
-# BUILD IMAGE (TEXT FOARTE MARE)
-# =============================
+    return ImageFont.load_default()
+
+# ================================
+# BUILD IMAGE (TEXT MARE)
+# ================================
 def build_image(league, home, away, minute, score, pick):
-    base = Image.open("template.png").convert("RGBA")
-    draw = ImageDraw.Draw(base)
 
-    gold = (242, 196, 78)
+    width = 1080
+    height = 1080
+
+    img = Image.new("RGB", (width, height), (10, 15, 35))
+    draw = ImageDraw.Draw(img)
+
+    # FONTS (MARI)
+    font_title = get_font(70, True)
+    font_big = get_font(80, True)
+    font_label = get_font(45, True)
+    font_value = get_font(55)
+
+    gold = (255, 215, 0)
     white = (255, 255, 255)
 
-    # TEXTURI MARI (cum ai cerut)
-    font_title = get_font(120, True)
-    font_league = get_font(80, True)
-    font_match = get_font(90, True)
-    font_label = get_font(70, True)
-    font_value = get_font(70, True)
-
+    # ======================
     # TITLE
-    draw.text((540, 60), "NVM LIVE ALERT", fill=gold, font=font_title, anchor="mm")
+    # ======================
+    draw.text((540, 60), "NVM LIVE ALERT", fill=gold, anchor="mm", font=font_title)
 
+    # ======================
     # LEAGUE
-    draw.text((540, 180), league, fill=white, font=font_league, anchor="mm")
+    # ======================
+    draw.text((540, 180), league, fill=white, anchor="mm", font=font_big)
 
+    # ======================
     # MATCH
-    match = f"{home} vs {away}"
-    draw.text((540, 300), match, fill=white, font=font_match, anchor="mm")
+    # ======================
+    match_text = f"{home} vs {away}"
+    draw.text((540, 300), match_text, fill=white, anchor="mm", font=font_big)
 
-    # LABELS
-    draw.text((100, 500), "MINUTE:", fill=gold, font=font_label)
-    draw.text((100, 600), "SCORE:", fill=gold, font=font_label)
-    draw.text((100, 700), "PICK:", fill=gold, font=font_label)
+    # ======================
+    # DATA
+    # ======================
+    y_start = 450
+    spacing = 120
 
-    # VALUES
-    draw.text((450, 500), minute, fill=white, font=font_value)
-    draw.text((450, 600), score, fill=white, font=font_value)
-    draw.text((450, 700), pick, fill=gold, font=font_value)
+    # MINUTE
+    draw.text((150, y_start), "MINUTE:", fill=gold, font=font_label)
+    draw.text((600, y_start), str(minute), fill=white, font=font_value)
 
-    path = f"/tmp/alert_{int(time.time())}.jpg"
-    base.convert("RGB").save(path, "JPEG", quality=95)
+    # SCORE
+    draw.text((150, y_start + spacing), "SCORE:", fill=gold, font=font_label)
+    draw.text((600, y_start + spacing), score, fill=white, font=font_value)
+
+    # PICK
+    draw.text((150, y_start + spacing * 2), "PICK:", fill=gold, font=font_label)
+    draw.text((600, y_start + spacing * 2), pick, fill=white, font=font_value)
+
+    # ======================
+    # SAVE
+    # ======================
+    filename = f"alert_{int(time.time())}.jpg"
+    path = f"/tmp/{filename}"
+    img.save(path)
 
     return path
 
+# ================================
+# POST TO INSTAGRAM
+# ================================
+def post_to_instagram(image_url, caption):
 
-# =============================
-# UPLOAD CLOUDINARY
-# =============================
-def upload_image(path):
-    res = cloudinary.uploader.upload(path, folder="nvm_instagram")
-    return res["secure_url"]
+    # STEP 1 - CREATE MEDIA
+    url = f"{BASE_URL}/{IG_USER_ID}/media"
 
-
-# =============================
-# INSTAGRAM POST
-# =============================
-def post_instagram(image_url, caption):
-    url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media"
-
-    data = {
+    payload = {
         "image_url": image_url,
         "caption": caption,
         "access_token": IG_ACCESS_TOKEN
     }
 
-    r = requests.post(url, data=data)
-    if r.status_code != 200:
-        return r.text
+    res = requests.post(url, data=payload).json()
 
-    creation_id = r.json()["id"]
+    if "id" not in res:
+        return {"error": "create_media_error", "details": res}
 
-    publish = requests.post(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish",
-        data={
-            "creation_id": creation_id,
-            "access_token": IG_ACCESS_TOKEN
-        }
-    )
+    creation_id = res["id"]
 
-    return publish.json()
+    # STEP 2 - PUBLISH
+    publish_url = f"{BASE_URL}/{IG_USER_ID}/media_publish"
 
+    res2 = requests.post(publish_url, data={
+        "creation_id": creation_id,
+        "access_token": IG_ACCESS_TOKEN
+    }).json()
 
-# =============================
-# POST ALERT
-# =============================
+    return res2
+
+# ================================
+# ROUTE
+# ================================
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
-    data = request.get_json()
+    try:
+        data = request.json
 
-    league = data.get("league", "")
-    home = data.get("home", "")
-    away = data.get("away", "")
-    minute = data.get("minute", "")
-    score = data.get("score", "")
-    pick = data.get("pick", "")
+        league = data.get("league", "")
+        home = data.get("home", "")
+        away = data.get("away", "")
+        minute = data.get("minute", "")
+        score = data.get("score", "")
+        pick = data.get("pick", "")
 
-    img = build_image(league, home, away, minute, score, pick)
-    url = upload_image(img)
+        # BUILD IMAGE
+        image_path = build_image(league, home, away, minute, score, pick)
 
-    caption = f"{league}\n{home} vs {away}\nMinute {minute}\nScore {score}\nPick: {pick}"
+        # UPLOAD TO CLOUDINARY
+        upload = cloudinary.uploader.upload(
+            image_path,
+            folder="nvm_instagram"
+        )
 
-    result = post_instagram(url, caption)
+        image_url = upload["secure_url"]
 
-    return {
-        "ok": True,
-        "image_url": url,
-        "result": result
-    }
+        # CAPTION
+        caption = f"""
+{league}
+{home} vs {away}
+
+Minute: {minute}
+Score: {score}
+Pick: {pick}
+
+@nvm_access_engine_bot
+
+#Football #LiveAlerts #BettingTips #NVM
+        """
+
+        # POST
+        result = post_to_instagram(image_url, caption)
+
+        return jsonify({
+            "ok": True,
+            "image_url": image_url,
+            "result": result
+        })
+
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        })
 
 
-# =============================
-@app.route("/")
-def home():
-    return "NVM INSTAGRAM LIVE READY"
+# ================================
+# RUN
+# ================================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
