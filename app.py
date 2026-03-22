@@ -224,26 +224,31 @@ def build_image(league, home, away, minute, score, pick):
 
     center_x = int(w * 0.50)
 
-    title_size = int(h * 0.036)
-    league_size = int(h * 0.044)
-    match_size = int(h * 0.054)
-    label_size = int(h * 0.050)
-    value_size = int(h * 0.058)
-    pick_size = int(h * 0.046)
+    # ================================
+    # SIZES
+    # ================================
+    title_size = int(h * 0.044)
+    league_size = int(h * 0.042)
+    match_size = int(h * 0.062)
+    label_size = int(h * 0.046)
+    value_size = int(h * 0.054)
+    pick_size = int(h * 0.044)
 
-    title_fallback_h = int(h * 0.040)
-    league_fallback_h = int(h * 0.050)
-    match_fallback_h = int(h * 0.060)
-    label_fallback_h = int(h * 0.052)
-    value_fallback_h = int(h * 0.060)
-    pick_fallback_h = int(h * 0.048)
+    title_fallback_h = int(h * 0.046)
+    league_fallback_h = int(h * 0.045)
+    match_fallback_h = int(h * 0.068)
+    label_fallback_h = int(h * 0.048)
+    value_fallback_h = int(h * 0.058)
+    pick_fallback_h = int(h * 0.046)
 
+    # ================================
     # TITLE
+    # ================================
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.06),
+        y=int(h * 0.055),
         text="NVM LIVE ALERT",
         size=title_size,
         fill=gold,
@@ -255,15 +260,17 @@ def build_image(league, home, away, minute, score, pick):
 
     wrap_font = get_truetype_font(max(22, int(h * 0.032)), bold=True) or ImageFont.load_default()
 
-    # LEAGUE
+    # ================================
+    # LEAGUE - closer to title
+    # ================================
     league_lines = wrap_text_by_pixels(draw, str(league), wrap_font, int(w * 0.68))
-    league_y = int(h * 0.16)
+    league_y = int(h * 0.145)
     for i, line in enumerate(league_lines[:2]):
         draw_text(
             base_img=img,
             draw=draw,
             x=center_x,
-            y=league_y + i * int(h * 0.048),
+            y=league_y + i * int(h * 0.044),
             text=line,
             size=league_size,
             fill=white,
@@ -273,16 +280,18 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=league_fallback_h,
         )
 
-    # MATCH
+    # ================================
+    # MATCH - bigger
+    # ================================
     match_text = f"{home} vs {away}"
     match_lines = wrap_text_by_pixels(draw, match_text, wrap_font, int(w * 0.74))
-    match_y = int(h * 0.27)
+    match_y = int(h * 0.245)
     for i, line in enumerate(match_lines[:2]):
         draw_text(
             base_img=img,
             draw=draw,
             x=center_x,
-            y=match_y + i * int(h * 0.058),
+            y=match_y + i * int(h * 0.055),
             text=line,
             size=match_size,
             fill=white,
@@ -292,11 +301,13 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=match_fallback_h,
         )
 
-    # LEFT INFO BLOCK
+    # ================================
+    # LEFT INFO BLOCK - moved up and tighter
+    # ================================
     x_label = int(w * 0.08)
-    x_value = int(w * 0.31)
-    y_start = int(h * 0.42)
-    row_gap = int(h * 0.110)
+    x_value = int(w * 0.30)
+    y_start = int(h * 0.40)
+    row_gap = int(h * 0.095)
 
     # MINUTE
     draw_text(
@@ -354,7 +365,7 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=value_fallback_h,
     )
 
-    # PICK LABEL
+    # PICK
     draw_text(
         base_img=img,
         draw=draw,
@@ -369,15 +380,15 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=label_fallback_h,
     )
 
-    # PICK VALUE - narrow width so it stays left of logo
-    pick_wrap_font = get_truetype_font(max(20, int(h * 0.028)), bold=True) or ImageFont.load_default()
-    pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.20))
+    # PICK VALUE - closer and kept left of logo
+    pick_wrap_font = get_truetype_font(max(20, int(h * 0.027)), bold=True) or ImageFont.load_default()
+    pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.18))
     for i, line in enumerate(pick_lines[:3]):
         draw_text(
             base_img=img,
             draw=draw,
             x=x_value,
-            y=y_start + row_gap * 2 + i * int(h * 0.044),
+            y=y_start + row_gap * 2 + i * int(h * 0.040),
             text=line,
             size=pick_size,
             fill=white,
