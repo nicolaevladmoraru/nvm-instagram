@@ -37,9 +37,41 @@ cloudinary.config(
 # ================================
 # FONT
 # ================================
+def get_matplotlib_font_path(bold: bool = False):
+    try:
+        import matplotlib.font_manager as fm
+
+        preferred = [
+            "DejaVu Sans",
+            "Liberation Sans",
+            "Arial",
+            "sans-serif",
+        ]
+
+        for family in preferred:
+            try:
+                props = fm.FontProperties(
+                    family=family,
+                    weight="bold" if bold else "normal"
+                )
+                path = fm.findfont(props, fallback_to_default=True)
+                if path and os.path.exists(path):
+                    print(f"[FONT] Matplotlib font found: {path} | bold={bold}")
+                    return path
+            except Exception as e:
+                print(f"[FONT] Matplotlib lookup failed for {family}: {e}")
+
+    except Exception as e:
+        print(f"[FONT] Matplotlib not available: {e}")
+
+    return None
+
+
 def get_truetype_font(size: int, bold: bool = False):
+    local_candidates = []
+
     if bold:
-        font_candidates = [
+        local_candidates = [
             "DejaVuSans-Bold.ttf",
             "DejaVuSans.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -48,7 +80,7 @@ def get_truetype_font(size: int, bold: bool = False):
             "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
         ]
     else:
-        font_candidates = [
+        local_candidates = [
             "DejaVuSans.ttf",
             "DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -57,13 +89,24 @@ def get_truetype_font(size: int, bold: bool = False):
             "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
 
-    for candidate in font_candidates:
+    # 1) normal paths / filenames
+    for candidate in local_candidates:
         try:
             font = ImageFont.truetype(candidate, size=size)
-            print(f"[FONT] Using: {candidate} | size={size} | bold={bold}")
+            print(f"[FONT] Using local: {candidate} | size={size} | bold={bold}")
             return font
         except Exception as e:
-            print(f"[FONT] Failed: {candidate} | {e}")
+            print(f"[FONT] Failed local: {candidate} | {e}")
+
+    # 2) matplotlib bundled fonts
+    mpl_path = get_matplotlib_font_path(bold=bold)
+    if mpl_path:
+        try:
+            font = ImageFont.truetype(mpl_path, size=size)
+            print(f"[FONT] Using matplotlib: {mpl_path} | size={size} | bold={bold}")
+            return font
+        except Exception as e:
+            print(f"[FONT] Failed matplotlib font: {mpl_path} | {e}")
 
     print(f"[FONT] No truetype font found | size={size} | bold={bold}")
     return None
@@ -133,7 +176,8 @@ def draw_scaled_bitmap_text(
         return
 
     scale = max(1, int(target_height / ch))
-    enlarged = cropped.resize((cw * scale, ch * scale), Image.Resampling.NEAREST)
+    # smoother than NEAREST
+    enlarged = cropped.resize((cw * scale, ch * scale), Image.Resampling.BICUBIC)
 
     ew, eh = enlarged.size
 
@@ -143,7 +187,7 @@ def draw_scaled_bitmap_text(
     elif anchor == "lm":
         px = int(x)
         py = int(y - eh / 2)
-    else:  # lt
+    else:
         px = int(x)
         py = int(y)
 
@@ -210,7 +254,7 @@ def build_image(league, home, away, minute, score, pick):
 
     center_x = int(w * 0.50)
 
-    # text sizes
+    # sizes
     title_size = int(h * 0.040)
     league_size = int(h * 0.052)
     match_size = int(h * 0.060)
@@ -218,7 +262,7 @@ def build_image(league, home, away, minute, score, pick):
     value_size = int(h * 0.072)
     pick_size = int(h * 0.060)
 
-    # MUCH larger fallback heights
+    # fallback heights
     title_fallback_h = int(h * 0.040)
     league_fallback_h = int(h * 0.055)
     match_fallback_h = int(h * 0.070)
@@ -241,7 +285,7 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=title_fallback_h,
     )
 
-    # wrap helpers
+    # wrap font
     wrap_font = get_truetype_font(max(22, int(h * 0.035)), bold=True) or ImageFont.load_default()
 
     # league
@@ -349,7 +393,7 @@ def build_image(league, home, away, minute, score, pick):
         draw=draw,
         x=x_label,
         y=y_start + row_gap * 2,
-        text="PICK:",
+        text="PICK",
         size=label_size,
         fill=gold,
         stroke_fill=black,
