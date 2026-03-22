@@ -47,6 +47,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     winrate_label_fallback_h = int(h * 0.054)
     winrate_value_fallback_h = int(h * 0.094)
 
+    # TITLE
     draw_text(
         base_img=img,
         draw=draw,
@@ -61,6 +62,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
+    # DATE
     draw_text(
         base_img=img,
         draw=draw,
@@ -75,11 +77,13 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=date_fallback_h,
     )
 
+    # LEFT STATS BLOCK
     x_label = int(w * 0.11)
     x_value = int(w * 0.42)
     y_start = int(h * 0.33)
     row_gap = int(h * 0.11)
 
+    # WINS
     draw_text(
         base_img=img,
         draw=draw,
@@ -107,6 +111,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=value_fallback_h,
     )
 
+    # LOST
     draw_text(
         base_img=img,
         draw=draw,
@@ -134,11 +139,12 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=value_fallback_h,
     )
 
+    # WIN RATE LABEL - moved higher
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.63),
+        y=int(h * 0.56),
         text="WIN RATE",
         size=winrate_label_size,
         fill=gold,
@@ -148,11 +154,12 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=winrate_label_fallback_h,
     )
 
+    # WIN RATE VALUE - moved higher
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.74),
+        y=int(h * 0.65),
         text=str(winrate),
         size=winrate_value_size,
         fill=white,
