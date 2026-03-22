@@ -94,7 +94,7 @@ def wrap_text_by_pixels(draw, text, font, max_width):
     return lines
 
 
-def draw_center_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=3):
+def draw_center_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=4):
     draw.text(
         (x, y),
         str(text),
@@ -106,7 +106,7 @@ def draw_center_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke
     )
 
 
-def draw_left_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=3):
+def draw_left_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=4):
     draw.text(
         (x, y),
         str(text),
@@ -124,74 +124,92 @@ def build_image(league, home, away, minute, score, pick):
 
     if os.path.exists(template_path):
         img = Image.open(template_path).convert("RGBA")
-        img = img.resize((1080, 1080), Image.LANCZOS)
     else:
         img = Image.new("RGBA", (1080, 1080), (10, 15, 35, 255))
 
     draw = ImageDraw.Draw(img)
 
+    w, h = img.size
+    print(f"[IMAGE] template_size={img.size}")
+
     gold = (242, 196, 78)
     white = (255, 255, 255)
     black = (0, 0, 0)
 
-    # FONTURI MARI
-    font_title = get_font(72, True)
-    font_league = get_font(54, True)
-    font_match = get_font(64, True)
-    font_label = get_font(58, True)
-    font_value = get_font(64, True)
-    font_pick = get_font(56, True)
+    # ================================
+    # FONT SIZES RELATIVE TO REAL IMAGE
+    # ================================
+    font_title = get_font(max(48, int(h * 0.030)), True)
+    font_league = get_font(max(42, int(h * 0.032)), True)
+    font_match = get_font(max(50, int(h * 0.040)), True)
+    font_label = get_font(max(54, int(h * 0.040)), True)
+    font_value = get_font(max(60, int(h * 0.046)), True)
+    font_pick = get_font(max(56, int(h * 0.043)), True)
 
+    # ================================
+    # POSITIONS RELATIVE TO REAL IMAGE
+    # ================================
+    center_x = int(w * 0.50)
+
+    title_y = int(h * 0.055)
+    league_y = int(h * 0.145)
+    match_y = int(h * 0.255)
+
+    x_label = int(w * 0.08)
+    x_value = int(w * 0.34)
+    y_start = int(h * 0.44)
+    row_gap = int(h * 0.115)
+
+    # ================================
     # TITLE
+    # ================================
     draw_center_text(
         draw,
-        540,
-        70,
+        center_x,
+        title_y,
         "NVM LIVE ALERT",
         font_title,
         gold,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
 
+    # ================================
     # LEAGUE
-    league_lines = wrap_text_by_pixels(draw, str(league), font_league, 820)
-    league_y = 170
+    # ================================
+    league_lines = wrap_text_by_pixels(draw, str(league), font_league, int(w * 0.70))
     for i, line in enumerate(league_lines[:2]):
         draw_center_text(
             draw,
-            540,
-            league_y + i * 58,
+            center_x,
+            league_y + i * int(h * 0.045),
             line,
             font_league,
             white,
             stroke_fill=black,
-            stroke_width=3,
+            stroke_width=4,
         )
 
+    # ================================
     # MATCH
+    # ================================
     match_text = f"{home} vs {away}"
-    match_lines = wrap_text_by_pixels(draw, match_text, font_match, 900)
-    match_y = 290
+    match_lines = wrap_text_by_pixels(draw, match_text, font_match, int(w * 0.78))
     for i, line in enumerate(match_lines[:2]):
         draw_center_text(
             draw,
-            540,
-            match_y + i * 68,
+            center_x,
+            match_y + i * int(h * 0.055),
             line,
             font_match,
             white,
             stroke_fill=black,
-            stroke_width=3,
+            stroke_width=4,
         )
 
-    # INFO BLOCK
-    x_label = 90
-    x_value = 390
-    y_start = 455
-    row_gap = 130
-
-    # MINUTE
+    # ================================
+    # INFO BLOCK LEFT
+    # ================================
     draw_left_text(
         draw,
         x_label,
@@ -200,7 +218,7 @@ def build_image(league, home, away, minute, score, pick):
         font_label,
         gold,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
     draw_left_text(
         draw,
@@ -210,10 +228,9 @@ def build_image(league, home, away, minute, score, pick):
         font_value,
         white,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
 
-    # SCORE
     draw_left_text(
         draw,
         x_label,
@@ -222,7 +239,7 @@ def build_image(league, home, away, minute, score, pick):
         font_label,
         gold,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
     draw_left_text(
         draw,
@@ -232,10 +249,9 @@ def build_image(league, home, away, minute, score, pick):
         font_value,
         white,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
 
-    # PICK
     draw_left_text(
         draw,
         x_label,
@@ -244,20 +260,20 @@ def build_image(league, home, away, minute, score, pick):
         font_label,
         gold,
         stroke_fill=black,
-        stroke_width=3,
+        stroke_width=4,
     )
 
-    pick_lines = wrap_text_by_pixels(draw, str(pick), font_pick, 470)
+    pick_lines = wrap_text_by_pixels(draw, str(pick), font_pick, int(w * 0.34))
     for i, line in enumerate(pick_lines[:2]):
         draw_left_text(
             draw,
             x_value,
-            y_start + row_gap * 2 + i * 58,
+            y_start + row_gap * 2 + i * int(h * 0.05),
             line,
             font_pick,
             white,
             stroke_fill=black,
-            stroke_width=3,
+            stroke_width=4,
         )
 
     filename = f"/tmp/alert_{int(time.time())}.jpg"
