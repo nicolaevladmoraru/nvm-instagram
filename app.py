@@ -37,39 +37,21 @@ cloudinary.config(
 # ================================
 # FONT
 # ================================
-def get_matplotlib_font_path(bold: bool = False):
-    try:
-        import matplotlib.font_manager as fm
-
-        preferred = [
-            "DejaVu Sans",
-            "Liberation Sans",
-            "Arial",
-            "sans-serif",
-        ]
-
-        for family in preferred:
-            try:
-                props = fm.FontProperties(
-                    family=family,
-                    weight="bold" if bold else "normal"
-                )
-                path = fm.findfont(props, fallback_to_default=True)
-                if path and os.path.exists(path):
-                    print(f"[FONT] Matplotlib font found: {path} | bold={bold}")
-                    return path
-            except Exception as e:
-                print(f"[FONT] Matplotlib lookup failed for {family}: {e}")
-
-    except Exception as e:
-        print(f"[FONT] Matplotlib not available: {e}")
-
-    return None
-
-
 def get_truetype_font(size: int, bold: bool = False):
-    local_candidates = []
+    repo_candidates = [
+        "fonts/Heart Bubble.otf",
+    ]
 
+    for candidate in repo_candidates:
+        if os.path.exists(candidate):
+            try:
+                font = ImageFont.truetype(candidate, size=size)
+                print(f"[FONT] Using repo font: {candidate} | size={size}")
+                return font
+            except Exception as e:
+                print(f"[FONT] Failed repo font: {candidate} | {e}")
+
+    local_candidates = []
     if bold:
         local_candidates = [
             "DejaVuSans-Bold.ttf",
@@ -89,24 +71,13 @@ def get_truetype_font(size: int, bold: bool = False):
             "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
 
-    # 1) normal paths / filenames
     for candidate in local_candidates:
         try:
             font = ImageFont.truetype(candidate, size=size)
-            print(f"[FONT] Using local: {candidate} | size={size} | bold={bold}")
+            print(f"[FONT] Using local font: {candidate} | size={size} | bold={bold}")
             return font
         except Exception as e:
             print(f"[FONT] Failed local: {candidate} | {e}")
-
-    # 2) matplotlib bundled fonts
-    mpl_path = get_matplotlib_font_path(bold=bold)
-    if mpl_path:
-        try:
-            font = ImageFont.truetype(mpl_path, size=size)
-            print(f"[FONT] Using matplotlib: {mpl_path} | size={size} | bold={bold}")
-            return font
-        except Exception as e:
-            print(f"[FONT] Failed matplotlib font: {mpl_path} | {e}")
 
     print(f"[FONT] No truetype font found | size={size} | bold={bold}")
     return None
@@ -176,7 +147,6 @@ def draw_scaled_bitmap_text(
         return
 
     scale = max(1, int(target_height / ch))
-    # smoother than NEAREST
     enlarged = cropped.resize((cw * scale, ch * scale), Image.Resampling.BICUBIC)
 
     ew, eh = enlarged.size
@@ -254,23 +224,21 @@ def build_image(league, home, away, minute, score, pick):
 
     center_x = int(w * 0.50)
 
-    # sizes
-    title_size = int(h * 0.040)
-    league_size = int(h * 0.052)
-    match_size = int(h * 0.060)
-    label_size = int(h * 0.060)
-    value_size = int(h * 0.072)
-    pick_size = int(h * 0.060)
+    title_size = int(h * 0.036)
+    league_size = int(h * 0.044)
+    match_size = int(h * 0.054)
+    label_size = int(h * 0.050)
+    value_size = int(h * 0.058)
+    pick_size = int(h * 0.046)
 
-    # fallback heights
     title_fallback_h = int(h * 0.040)
-    league_fallback_h = int(h * 0.055)
-    match_fallback_h = int(h * 0.070)
-    label_fallback_h = int(h * 0.060)
-    value_fallback_h = int(h * 0.075)
-    pick_fallback_h = int(h * 0.065)
+    league_fallback_h = int(h * 0.050)
+    match_fallback_h = int(h * 0.060)
+    label_fallback_h = int(h * 0.052)
+    value_fallback_h = int(h * 0.060)
+    pick_fallback_h = int(h * 0.048)
 
-    # title
+    # TITLE
     draw_text(
         base_img=img,
         draw=draw,
@@ -285,18 +253,17 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=title_fallback_h,
     )
 
-    # wrap font
-    wrap_font = get_truetype_font(max(22, int(h * 0.035)), bold=True) or ImageFont.load_default()
+    wrap_font = get_truetype_font(max(22, int(h * 0.032)), bold=True) or ImageFont.load_default()
 
-    # league
-    league_lines = wrap_text_by_pixels(draw, str(league), wrap_font, int(w * 0.72))
+    # LEAGUE
+    league_lines = wrap_text_by_pixels(draw, str(league), wrap_font, int(w * 0.68))
     league_y = int(h * 0.16)
     for i, line in enumerate(league_lines[:2]):
         draw_text(
             base_img=img,
             draw=draw,
             x=center_x,
-            y=league_y + i * int(h * 0.055),
+            y=league_y + i * int(h * 0.048),
             text=line,
             size=league_size,
             fill=white,
@@ -306,16 +273,16 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=league_fallback_h,
         )
 
-    # match
+    # MATCH
     match_text = f"{home} vs {away}"
-    match_lines = wrap_text_by_pixels(draw, match_text, wrap_font, int(w * 0.80))
+    match_lines = wrap_text_by_pixels(draw, match_text, wrap_font, int(w * 0.74))
     match_y = int(h * 0.27)
     for i, line in enumerate(match_lines[:2]):
         draw_text(
             base_img=img,
             draw=draw,
             x=center_x,
-            y=match_y + i * int(h * 0.065),
+            y=match_y + i * int(h * 0.058),
             text=line,
             size=match_size,
             fill=white,
@@ -325,13 +292,13 @@ def build_image(league, home, away, minute, score, pick):
             fallback_height=match_fallback_h,
         )
 
-    # left info block
+    # LEFT INFO BLOCK
     x_label = int(w * 0.08)
-    x_value = int(w * 0.35)
-    y_start = int(h * 0.41)
-    row_gap = int(h * 0.115)
+    x_value = int(w * 0.31)
+    y_start = int(h * 0.42)
+    row_gap = int(h * 0.110)
 
-    # minute
+    # MINUTE
     draw_text(
         base_img=img,
         draw=draw,
@@ -359,7 +326,7 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=value_fallback_h,
     )
 
-    # score
+    # SCORE
     draw_text(
         base_img=img,
         draw=draw,
@@ -387,13 +354,13 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=value_fallback_h,
     )
 
-    # pick
+    # PICK LABEL
     draw_text(
         base_img=img,
         draw=draw,
         x=x_label,
         y=y_start + row_gap * 2,
-        text="PICK",
+        text="PICK:",
         size=label_size,
         fill=gold,
         stroke_fill=black,
@@ -402,14 +369,15 @@ def build_image(league, home, away, minute, score, pick):
         fallback_height=label_fallback_h,
     )
 
-    pick_wrap_font = get_truetype_font(max(20, int(h * 0.033)), bold=True) or ImageFont.load_default()
-    pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.36))
-    for i, line in enumerate(pick_lines[:2]):
+    # PICK VALUE - narrow width so it stays left of logo
+    pick_wrap_font = get_truetype_font(max(20, int(h * 0.028)), bold=True) or ImageFont.load_default()
+    pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.20))
+    for i, line in enumerate(pick_lines[:3]):
         draw_text(
             base_img=img,
             draw=draw,
             x=x_value,
-            y=y_start + row_gap * 2 + i * int(h * 0.060),
+            y=y_start + row_gap * 2 + i * int(h * 0.044),
             text=line,
             size=pick_size,
             fill=white,
