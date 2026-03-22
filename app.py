@@ -1,6 +1,5 @@
 import os
 import time
-import textwrap
 import requests
 import cloudinary
 import cloudinary.uploader
@@ -64,72 +63,8 @@ def get_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 # ================================
-# DRAW HELPERS
+# TEXT HELPERS
 # ================================
-def draw_text_center(
-    draw,
-    xy,
-    text,
-    font,
-    fill,
-    shadow_fill=(0, 0, 0),
-    shadow_offset=3,
-    stroke_width=2,
-    stroke_fill=(0, 0, 0),
-    anchor="mm",
-):
-    x, y = xy
-    draw.text(
-        (x + shadow_offset, y + shadow_offset),
-        text,
-        font=font,
-        fill=shadow_fill,
-        anchor=anchor,
-        stroke_width=stroke_width,
-        stroke_fill=shadow_fill,
-    )
-    draw.text(
-        (x, y),
-        text,
-        font=font,
-        fill=fill,
-        anchor=anchor,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill,
-    )
-
-def draw_text_left(
-    draw,
-    xy,
-    text,
-    font,
-    fill,
-    shadow_fill=(0, 0, 0),
-    shadow_offset=3,
-    stroke_width=2,
-    stroke_fill=(0, 0, 0),
-    anchor="la",
-):
-    x, y = xy
-    draw.text(
-        (x + shadow_offset, y + shadow_offset),
-        text,
-        font=font,
-        fill=shadow_fill,
-        anchor=anchor,
-        stroke_width=stroke_width,
-        stroke_fill=shadow_fill,
-    )
-    draw.text(
-        (x, y),
-        text,
-        font=font,
-        fill=fill,
-        anchor=anchor,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill,
-    )
-
 def wrap_text_by_pixels(draw, text, font, max_width):
     words = str(text or "").split()
     if not words:
@@ -151,6 +86,29 @@ def wrap_text_by_pixels(draw, text, font, max_width):
     lines.append(current)
     return lines
 
+
+def draw_center_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=3):
+    draw.text(
+        (x, y),
+        str(text),
+        fill=fill,
+        anchor="mm",
+        font=font,
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill,
+    )
+
+
+def draw_left_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=3):
+    draw.text(
+        (x, y),
+        str(text),
+        fill=fill,
+        font=font,
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill,
+    )
+
 # ================================
 # IMAGE BUILD
 # ================================
@@ -159,6 +117,7 @@ def build_image(league, home, away, minute, score, pick):
 
     if os.path.exists(template_path):
         img = Image.open(template_path).convert("RGBA")
+        img = img.resize((1080, 1080), Image.LANCZOS)
     else:
         img = Image.new("RGBA", (1080, 1080), (10, 15, 35, 255))
 
@@ -166,130 +125,137 @@ def build_image(league, home, away, minute, score, pick):
 
     gold = (242, 196, 78)
     white = (255, 255, 255)
-    soft_white = (245, 245, 245)
     black = (0, 0, 0)
 
     # FONTURI FOARTE MARI
-    font_title = get_font(680, True)
-    font_league = get_font(460, True)
-    font_match = get_font(580, True)
-    font_label = get_font(520, True)
-    font_value = get_font(600, True)
-    font_pick = get_font(540, True)
+    font_title = get_font(72, True)
+    font_league = get_font(54, True)
+    font_match = get_font(64, True)
+    font_label = get_font(58, True)
+    font_value = get_font(64, True)
+    font_pick = get_font(56, True)
 
     # TITLE
-    draw_text_center(
+    draw_center_text(
         draw,
-        (540, 58),
+        540,
+        70,
         "NVM LIVE ALERT",
-        font=font_title,
-        fill=gold,
-        stroke_width=3,
+        font_title,
+        gold,
         stroke_fill=black,
+        stroke_width=3,
     )
 
-    # LEAGUE (wrap pe 2 linii daca e nevoie)
-    league_lines = wrap_text_by_pixels(draw, league, font_league, 760)
-    league_y = 150
+    # LEAGUE
+    league_lines = wrap_text_by_pixels(draw, str(league), font_league, 820)
+    league_y = 170
     for i, line in enumerate(league_lines[:2]):
-        draw_text_center(
+        draw_center_text(
             draw,
-            (540, league_y + i * 52),
+            540,
+            league_y + i * 58,
             line,
-            font=font_league,
-            fill=soft_white,
-            stroke_width=2,
+            font_league,
+            white,
             stroke_fill=black,
+            stroke_width=3,
         )
 
     # MATCH
     match_text = f"{home} vs {away}"
-    match_lines = wrap_text_by_pixels(draw, match_text, font_match, 860)
-    match_y = 250
+    match_lines = wrap_text_by_pixels(draw, match_text, font_match, 900)
+    match_y = 290
     for i, line in enumerate(match_lines[:2]):
-        draw_text_center(
+        draw_center_text(
             draw,
-            (540, match_y + i * 64),
+            540,
+            match_y + i * 68,
             line,
-            font=font_match,
-            fill=white,
-            stroke_width=3,
+            font_match,
+            white,
             stroke_fill=black,
+            stroke_width=3,
         )
 
-    # ZONA INFO MAI BINE ARANJATA
-    x_label = 95
+    # INFO BLOCK
+    x_label = 90
     x_value = 390
-    y_start = 430
-    row_gap = 125
+    y_start = 455
+    row_gap = 130
 
     # MINUTE
-    draw_text_left(
+    draw_left_text(
         draw,
-        (x_label, y_start),
+        x_label,
+        y_start,
         "MINUTE:",
-        font=font_label,
-        fill=gold,
-        stroke_width=2,
+        font_label,
+        gold,
         stroke_fill=black,
-    )
-    draw_text_left(
-        draw,
-        (x_value, y_start),
-        str(minute),
-        font=font_value,
-        fill=white,
         stroke_width=3,
+    )
+    draw_left_text(
+        draw,
+        x_value,
+        y_start,
+        str(minute),
+        font_value,
+        white,
         stroke_fill=black,
+        stroke_width=3,
     )
 
     # SCORE
-    draw_text_left(
+    draw_left_text(
         draw,
-        (x_label, y_start + row_gap),
+        x_label,
+        y_start + row_gap,
         "SCORE:",
-        font=font_label,
-        fill=gold,
-        stroke_width=2,
+        font_label,
+        gold,
         stroke_fill=black,
-    )
-    draw_text_left(
-        draw,
-        (x_value, y_start + row_gap),
-        str(score),
-        font=font_value,
-        fill=white,
         stroke_width=3,
+    )
+    draw_left_text(
+        draw,
+        x_value,
+        y_start + row_gap,
+        str(score),
+        font_value,
+        white,
         stroke_fill=black,
+        stroke_width=3,
     )
 
     # PICK
-    draw_text_left(
+    draw_left_text(
         draw,
-        (x_label, y_start + row_gap * 2),
+        x_label,
+        y_start + row_gap * 2,
         "PICK:",
-        font=font_label,
-        fill=gold,
-        stroke_width=2,
+        font_label,
+        gold,
         stroke_fill=black,
+        stroke_width=3,
     )
 
-    pick_lines = wrap_text_by_pixels(draw, str(pick), font_pick, 420)
-    pick_base_y = y_start + row_gap * 2
+    pick_lines = wrap_text_by_pixels(draw, str(pick), font_pick, 470)
     for i, line in enumerate(pick_lines[:2]):
-        draw_text_left(
+        draw_left_text(
             draw,
-            (x_value, pick_base_y + i * 58),
+            x_value,
+            y_start + row_gap * 2 + i * 58,
             line,
-            font=font_pick,
-            fill=white,
-            stroke_width=3,
+            font_pick,
+            white,
             stroke_fill=black,
+            stroke_width=3,
         )
 
     filename = f"/tmp/alert_{int(time.time())}.jpg"
     img.convert("RGB").save(filename, "JPEG", quality=95)
-    print(f"[IMAGE] Saved preview to {filename}")
+    print(f"[IMAGE] Saved preview to {filename} | final_size={img.size}")
     return filename
 
 # ================================
@@ -316,6 +282,7 @@ def get_active_token():
 def post_to_instagram(image_url, caption):
     access_token = get_active_token()
 
+    # STEP 1 - CREATE MEDIA
     create_url = f"{BASE_URL}/{IG_USER_ID}/media"
     create_payload = {
         "image_url": image_url,
@@ -330,10 +297,14 @@ def post_to_instagram(image_url, caption):
 
     creation_id = create_response["id"]
 
+    # STEP 2 - WAIT UNTIL READY
     for _ in range(12):
         status_response = requests.get(
             f"{BASE_URL}/{creation_id}",
-            params={"fields": "status_code", "access_token": access_token},
+            params={
+                "fields": "status_code",
+                "access_token": access_token
+            },
             timeout=60
         ).json()
 
@@ -347,22 +318,19 @@ def post_to_instagram(image_url, caption):
 
         time.sleep(5)
 
+    # STEP 3 - PUBLISH
     publish_url = f"{BASE_URL}/{IG_USER_ID}/media_publish"
-    publish_response = requests.post(
-        publish_url,
-        data={"creation_id": creation_id, "access_token": access_token},
-        timeout=120
-    ).json()
+    publish_payload = {
+        "creation_id": creation_id,
+        "access_token": access_token
+    }
 
+    publish_response = requests.post(publish_url, data=publish_payload, timeout=120).json()
     return publish_response
 
 # ================================
-# ROUTES
+# META LOGIN
 # ================================
-@app.route("/")
-def home():
-    return "NVM INSTAGRAM LIVE READY"
-
 @app.route("/meta-login")
 def meta_login():
     login_url = (
@@ -372,6 +340,7 @@ def meta_login():
         f"&scope=pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish"
     )
     return redirect(login_url)
+
 
 @app.route("/meta-callback")
 def meta_callback():
@@ -407,6 +376,7 @@ def meta_callback():
         "access_token": access_token
     })
 
+
 @app.route("/get-token")
 def get_token():
     if not os.path.exists(TOKEN_FILE):
@@ -416,6 +386,14 @@ def get_token():
         token = f.read().strip()
 
     return jsonify({"ok": True, "token": token})
+
+# ================================
+# ROUTES
+# ================================
+@app.route("/")
+def home():
+    return "NVM INSTAGRAM LIVE READY"
+
 
 @app.route("/preview-alert", methods=["POST"])
 def preview_alert():
@@ -437,11 +415,13 @@ def preview_alert():
             "preview_only": True,
             "image_url": image_url
         })
+
     except Exception as e:
         return jsonify({
             "ok": False,
             "error": str(e)
         }), 500
+
 
 @app.route("/post-alert", methods=["POST"])
 def post_alert():
@@ -481,6 +461,7 @@ def post_alert():
             "ok": False,
             "error": str(e)
         }), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
