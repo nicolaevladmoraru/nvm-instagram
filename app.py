@@ -39,25 +39,31 @@ cloudinary.config(
 # ================================
 def get_font(size: int, bold: bool = False):
     if bold:
-        candidates = [
+        font_candidates = [
+            "DejaVuSans-Bold.ttf",
+            "DejaVuSans.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
         ]
     else:
-        candidates = [
+        font_candidates = [
+            "DejaVuSans.ttf",
+            "DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
 
-    for path in candidates:
-        if os.path.exists(path):
-            try:
-                print(f"[FONT] Using: {path} | size={size} | bold={bold}")
-                return ImageFont.truetype(path, size=size)
-            except Exception as e:
-                print(f"[FONT] Failed {path}: {e}")
+    for candidate in font_candidates:
+        try:
+            font = ImageFont.truetype(candidate, size=size)
+            print(f"[FONT] Using: {candidate} | size={size} | bold={bold}")
+            return font
+        except Exception as e:
+            print(f"[FONT] Failed: {candidate} | {e}")
 
     print(f"[FONT] Falling back to default font | size={size} | bold={bold}")
     return ImageFont.load_default()
@@ -77,6 +83,7 @@ def wrap_text_by_pixels(draw, text, font, max_width):
         test = current + " " + word
         bbox = draw.textbbox((0, 0), test, font=font)
         width = bbox[2] - bbox[0]
+
         if width <= max_width:
             current = test
         else:
@@ -127,7 +134,7 @@ def build_image(league, home, away, minute, score, pick):
     white = (255, 255, 255)
     black = (0, 0, 0)
 
-    # FONTURI FOARTE MARI
+    # FONTURI MARI
     font_title = get_font(72, True)
     font_league = get_font(54, True)
     font_match = get_font(64, True)
@@ -282,7 +289,6 @@ def get_active_token():
 def post_to_instagram(image_url, caption):
     access_token = get_active_token()
 
-    # STEP 1 - CREATE MEDIA
     create_url = f"{BASE_URL}/{IG_USER_ID}/media"
     create_payload = {
         "image_url": image_url,
@@ -297,7 +303,6 @@ def post_to_instagram(image_url, caption):
 
     creation_id = create_response["id"]
 
-    # STEP 2 - WAIT UNTIL READY
     for _ in range(12):
         status_response = requests.get(
             f"{BASE_URL}/{creation_id}",
@@ -318,7 +323,6 @@ def post_to_instagram(image_url, caption):
 
         time.sleep(5)
 
-    # STEP 3 - PUBLISH
     publish_url = f"{BASE_URL}/{IG_USER_ID}/media_publish"
     publish_payload = {
         "creation_id": creation_id,
