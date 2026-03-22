@@ -39,6 +39,7 @@ cloudinary.config(
 # ================================
 def get_font(size, bold=False):
     candidates = []
+
     if bold:
         candidates = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -60,6 +61,7 @@ def get_font(size, bold=False):
                 pass
 
     return ImageFont.load_default()
+
 
 # ================================
 # META LOGIN
@@ -196,6 +198,7 @@ def get_active_token():
 def post_to_instagram(image_url, caption):
     access_token = get_active_token()
 
+    # STEP 1 - CREATE MEDIA
     create_url = f"{BASE_URL}/{IG_USER_ID}/media"
     create_payload = {
         "image_url": image_url,
@@ -210,6 +213,38 @@ def post_to_instagram(image_url, caption):
 
     creation_id = create_response["id"]
 
+    # STEP 2 - CHECK STATUS UNTIL READY
+    status_url = f"{BASE_URL}/{creation_id}"
+    is_ready = False
+
+    for _ in range(12):
+        status_response = requests.get(
+            status_url,
+            params={
+                "fields": "status_code",
+                "access_token": access_token
+            },
+            timeout=60
+        ).json()
+
+        status_code = str(status_response.get("status_code", "")).upper()
+
+        if status_code == "FINISHED":
+            is_ready = True
+            break
+
+        if status_code == "ERROR":
+            return {"error": "media_status_error", "details": status_response}
+
+        time.sleep(5)
+
+    if not is_ready:
+        return {
+            "error": "media_not_ready",
+            "details": {"creation_id": creation_id}
+        }
+
+    # STEP 3 - PUBLISH
     publish_url = f"{BASE_URL}/{IG_USER_ID}/media_publish"
     publish_payload = {
         "creation_id": creation_id,
