@@ -170,12 +170,12 @@ def build_image(league, home, away, minute, score, pick):
     black = (0, 0, 0)
 
     # FONTURI FOARTE MARI
-    font_title = get_font(68, True)
-    font_league = get_font(46, True)
-    font_match = get_font(58, True)
-    font_label = get_font(52, True)
-    font_value = get_font(60, True)
-    font_pick = get_font(54, True)
+    font_title = get_font(680, True)
+    font_league = get_font(460, True)
+    font_match = get_font(580, True)
+    font_label = get_font(520, True)
+    font_value = get_font(600, True)
+    font_pick = get_font(540, True)
 
     # TITLE
     draw_text_center(
