@@ -23,7 +23,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     center_x = int(w * 0.50)
 
     # ================================
-    # HEADER
+    # HEADER TEXT
     # ================================
     if report_type == "daily":
         header_text = "NVM DAILY REPORT"
@@ -36,17 +36,30 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     else:
         header_text = str(title or "NVM REPORT")
 
-    title_size = int(h * 0.048)
+    # ================================
+    # SIZES
+    # ================================
+    title_size = int(h * 0.050)
     date_size = int(h * 0.034)
-    label_size = int(h * 0.046)
-    value_size = int(h * 0.060)
 
-    title_fallback_h = int(h * 0.052)
+    stat_label_size = int(h * 0.044)
+    stat_value_size = int(h * 0.066)
+
+    winrate_label_size = int(h * 0.046)
+    winrate_value_size = int(h * 0.110)
+
+    title_fallback_h = int(h * 0.054)
     date_fallback_h = int(h * 0.038)
-    label_fallback_h = int(h * 0.050)
-    value_fallback_h = int(h * 0.064)
 
+    stat_label_fallback_h = int(h * 0.046)
+    stat_value_fallback_h = int(h * 0.070)
+
+    winrate_label_fallback_h = int(h * 0.048)
+    winrate_value_fallback_h = int(h * 0.115)
+
+    # ================================
     # TITLE
+    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -61,7 +74,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
-    # DATE
+    # DATE / PERIOD
     draw_text(
         base_img=img,
         draw=draw,
@@ -77,99 +90,99 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
     )
 
     # ================================
-    # LEFT BLOCK (ALL 3)
+    # LEFT STATS BLOCK
     # ================================
     x_label = int(w * 0.11)
     x_value = int(w * 0.42)
 
-    y_start = int(h * 0.33)
-    row_gap = int(h * 0.11)
+    y_start = int(h * 0.35)
+    row_gap = int(h * 0.12)
 
-    # -------- WINS --------
+    # WINS
     draw_text(
         base_img=img,
         draw=draw,
         x=x_label,
         y=y_start,
         text="WINS:",
-        size=label_size,
+        size=stat_label_size,
         fill=gold,
         stroke_fill=black,
         bold=True,
         anchor="lt",
-        fallback_height=label_fallback_h,
+        fallback_height=stat_label_fallback_h,
     )
-
     draw_text(
         base_img=img,
         draw=draw,
         x=x_value,
         y=y_start,
         text=str(wins),
-        size=value_size,
+        size=stat_value_size,
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="lt",
-        fallback_height=value_fallback_h,
+        fallback_height=stat_value_fallback_h,
     )
 
-    # -------- LOST --------
+    # LOST
     draw_text(
         base_img=img,
         draw=draw,
         x=x_label,
         y=y_start + row_gap,
         text="LOST:",
-        size=label_size,
+        size=stat_label_size,
         fill=gold,
         stroke_fill=black,
         bold=True,
         anchor="lt",
-        fallback_height=label_fallback_h,
+        fallback_height=stat_label_fallback_h,
     )
-
     draw_text(
         base_img=img,
         draw=draw,
         x=x_value,
         y=y_start + row_gap,
         text=str(lost),
-        size=value_size,
+        size=stat_value_size,
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="lt",
-        fallback_height=value_fallback_h,
+        fallback_height=stat_value_fallback_h,
     )
 
-    # -------- WIN RATE (FIXED POSITION) --------
+    # ================================
+    # WIN RATE HIGHLIGHT (PRO STYLE)
+    # ================================
     draw_text(
         base_img=img,
         draw=draw,
-        x=x_label,
-        y=y_start + row_gap * 2,
-        text="WIN RATE:",
-        size=label_size,
+        x=int(w * 0.36),
+        y=int(h * 0.64),
+        text="WIN RATE",
+        size=winrate_label_size,
         fill=gold,
         stroke_fill=black,
         bold=True,
-        anchor="lt",
-        fallback_height=label_fallback_h,
+        anchor="mm",
+        fallback_height=winrate_label_fallback_h,
     )
 
     draw_text(
         base_img=img,
         draw=draw,
-        x=x_value,
-        y=y_start + row_gap * 2,
+        x=int(w * 0.36),
+        y=int(h * 0.76),
         text=str(winrate),
-        size=value_size,
+        size=winrate_value_size,
         fill=white,
         stroke_fill=black,
         bold=True,
-        anchor="lt",
-        fallback_height=value_fallback_h,
+        anchor="mm",
+        fallback_height=winrate_value_fallback_h,
     )
 
     filename = f"/tmp/report_{int(time.time())}.jpg"
