@@ -37,7 +37,7 @@ cloudinary.config(
 # ================================
 # FONT
 # ================================
-def get_font(size: int, bold: bool = False):
+def get_truetype_font(size: int, bold: bool = False):
     if bold:
         font_candidates = [
             "DejaVuSans-Bold.ttf",
@@ -65,13 +65,19 @@ def get_font(size: int, bold: bool = False):
         except Exception as e:
             print(f"[FONT] Failed: {candidate} | {e}")
 
-    print(f"[FONT] Falling back to default font | size={size} | bold={bold}")
-    return ImageFont.load_default()
+    print(f"[FONT] No truetype font found | size={size} | bold={bold}")
+    return None
+
 
 # ================================
 # TEXT HELPERS
 # ================================
-def wrap_text_by_pixels(draw, text, font, max_width):
+def text_size(draw: ImageDraw.ImageDraw, text: str, font) -> tuple[int, int]:
+    bbox = draw.textbbox((0, 0), str(text), font=font)
+    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+
+def wrap_text_by_pixels(draw: ImageDraw.ImageDraw, text: str, font, max_width: int):
     words = str(text or "").split()
     if not words:
         return [""]
@@ -81,10 +87,8 @@ def wrap_text_by_pixels(draw, text, font, max_width):
 
     for word in words[1:]:
         test = current + " " + word
-        bbox = draw.textbbox((0, 0), test, font=font)
-        width = bbox[2] - bbox[0]
-
-        if width <= max_width:
+        w, _ = text_size(draw, test, font)
+        if w <= max_width:
             current = test
         else:
             lines.append(current)
@@ -94,27 +98,98 @@ def wrap_text_by_pixels(draw, text, font, max_width):
     return lines
 
 
-def draw_center_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=4):
-    draw.text(
-        (x, y),
-        str(text),
-        fill=fill,
-        anchor="mm",
-        font=font,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill,
-    )
+def draw_scaled_bitmap_text(
+    base_img: Image.Image,
+    x: int,
+    y: int,
+    text: str,
+    target_height: int,
+    fill=(255, 255, 255),
+    stroke_fill=(0, 0, 0),
+    anchor: str = "lt",
+):
+    """
+    Fallback text drawer that does NOT rely on external fonts.
+    It renders with PIL default font on a small canvas, then scales it up.
+    """
+    default_font = ImageFont.load_default()
+    temp_img = Image.new("RGBA", (2000, 400), (0, 0, 0, 0))
+    temp_draw = ImageDraw.Draw(temp_img)
+
+    # draw stroke manually around text
+    stroke_offsets = [(-2, -2), (-2, 0), (-2, 2), (0, -2), (0, 2), (2, -2), (2, 0), (2, 2)]
+    for dx, dy in stroke_offsets:
+        temp_draw.text((20 + dx, 20 + dy), str(text), font=default_font, fill=stroke_fill)
+
+    temp_draw.text((20, 20), str(text), font=default_font, fill=fill)
+
+    bbox = temp_img.getbbox()
+    if not bbox:
+        return
+
+    cropped = temp_img.crop(bbox)
+    cw, ch = cropped.size
+    if ch <= 0:
+        return
+
+    scale = max(1, int(target_height / ch))
+    enlarged = cropped.resize((cw * scale, ch * scale), Image.Resampling.NEAREST)
+
+    ew, eh = enlarged.size
+
+    if anchor == "mm":
+        px = int(x - ew / 2)
+        py = int(y - eh / 2)
+    elif anchor == "lm":
+        px = int(x)
+        py = int(y - eh / 2)
+    else:  # lt
+        px = int(x)
+        py = int(y)
+
+    base_img.alpha_composite(enlarged, (px, py))
 
 
-def draw_left_text(draw, x, y, text, font, fill, stroke_fill=(0, 0, 0), stroke_width=4):
-    draw.text(
-        (x, y),
-        str(text),
+def draw_text(
+    base_img: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    text: str,
+    size: int,
+    fill=(255, 255, 255),
+    stroke_fill=(0, 0, 0),
+    bold: bool = True,
+    anchor: str = "lt",
+    fallback_height: int | None = None,
+):
+    font = get_truetype_font(size=size, bold=bold)
+
+    if font is not None:
+        draw.text(
+            (x, y),
+            str(text),
+            fill=fill,
+            anchor=anchor,
+            font=font,
+            stroke_width=max(2, int(size * 0.06)),
+            stroke_fill=stroke_fill,
+        )
+        return font
+
+    # fallback without real fonts
+    draw_scaled_bitmap_text(
+        base_img=base_img,
+        x=x,
+        y=y,
+        text=text,
+        target_height=fallback_height or size,
         fill=fill,
-        font=font,
-        stroke_width=stroke_width,
         stroke_fill=stroke_fill,
+        anchor=anchor,
     )
+    return ImageFont.load_default()
+
 
 # ================================
 # IMAGE BUILD
@@ -125,10 +200,9 @@ def build_image(league, home, away, minute, score, pick):
     if os.path.exists(template_path):
         img = Image.open(template_path).convert("RGBA")
     else:
-        img = Image.new("RGBA", (1080, 1080), (10, 15, 35, 255))
+        img = Image.new("RGBA", (1024, 1024), (10, 15, 35, 255))
 
     draw = ImageDraw.Draw(img)
-
     w, h = img.size
     print(f"[IMAGE] template_size={img.size}")
 
@@ -137,143 +211,176 @@ def build_image(league, home, away, minute, score, pick):
     black = (0, 0, 0)
 
     # ================================
-    # FONT SIZES RELATIVE TO REAL IMAGE
+    # SIZES
     # ================================
-    font_title = get_font(max(48, int(h * 0.030)), True)
-    font_league = get_font(max(42, int(h * 0.032)), True)
-    font_match = get_font(max(50, int(h * 0.040)), True)
-    font_label = get_font(max(54, int(h * 0.040)), True)
-    font_value = get_font(max(60, int(h * 0.046)), True)
-    font_pick = get_font(max(56, int(h * 0.043)), True)
+    title_size = int(h * 0.030)
+    league_size = int(h * 0.040)
+    match_size = int(h * 0.048)
+    label_size = int(h * 0.050)
+    value_size = int(h * 0.055)
+    pick_size = int(h * 0.048)
 
-    # ================================
-    # POSITIONS RELATIVE TO REAL IMAGE
-    # ================================
+    # fallback heights for bitmap scaling
+    title_fallback_h = int(h * 0.038)
+    league_fallback_h = int(h * 0.045)
+    match_fallback_h = int(h * 0.055)
+    label_fallback_h = int(h * 0.052)
+    value_fallback_h = int(h * 0.058)
+    pick_fallback_h = int(h * 0.050)
+
     center_x = int(w * 0.50)
-
-    title_y = int(h * 0.055)
-    league_y = int(h * 0.145)
-    match_y = int(h * 0.255)
-
-    x_label = int(w * 0.08)
-    x_value = int(w * 0.34)
-    y_start = int(h * 0.44)
-    row_gap = int(h * 0.115)
 
     # ================================
     # TITLE
     # ================================
-    draw_center_text(
-        draw,
-        center_x,
-        title_y,
-        "NVM LIVE ALERT",
-        font_title,
-        gold,
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=center_x,
+        y=int(h * 0.06),
+        text="NVM LIVE ALERT",
+        size=title_size,
+        fill=gold,
         stroke_fill=black,
-        stroke_width=4,
+        bold=True,
+        anchor="mm",
+        fallback_height=title_fallback_h,
     )
 
     # ================================
-    # LEAGUE
+    # LEAGUE + MATCH
     # ================================
-    league_lines = wrap_text_by_pixels(draw, str(league), font_league, int(w * 0.70))
+    wrap_font = get_truetype_font(max(22, int(h * 0.035)), bold=True) or ImageFont.load_default()
+
+    league_lines = wrap_text_by_pixels(draw, str(league), wrap_font, int(w * 0.72))
+    league_y = int(h * 0.16)
     for i, line in enumerate(league_lines[:2]):
-        draw_center_text(
-            draw,
-            center_x,
-            league_y + i * int(h * 0.045),
-            line,
-            font_league,
-            white,
+        draw_text(
+            base_img=img,
+            draw=draw,
+            x=center_x,
+            y=league_y + i * int(h * 0.050),
+            text=line,
+            size=league_size,
+            fill=white,
             stroke_fill=black,
-            stroke_width=4,
+            bold=True,
+            anchor="mm",
+            fallback_height=league_fallback_h,
         )
 
-    # ================================
-    # MATCH
-    # ================================
     match_text = f"{home} vs {away}"
-    match_lines = wrap_text_by_pixels(draw, match_text, font_match, int(w * 0.78))
+    match_lines = wrap_text_by_pixels(draw, match_text, wrap_font, int(w * 0.80))
+    match_y = int(h * 0.27)
     for i, line in enumerate(match_lines[:2]):
-        draw_center_text(
-            draw,
-            center_x,
-            match_y + i * int(h * 0.055),
-            line,
-            font_match,
-            white,
+        draw_text(
+            base_img=img,
+            draw=draw,
+            x=center_x,
+            y=match_y + i * int(h * 0.060),
+            text=line,
+            size=match_size,
+            fill=white,
             stroke_fill=black,
-            stroke_width=4,
+            bold=True,
+            anchor="mm",
+            fallback_height=match_fallback_h,
         )
 
     # ================================
     # INFO BLOCK LEFT
     # ================================
-    draw_left_text(
-        draw,
-        x_label,
-        y_start,
-        "MINUTE:",
-        font_label,
-        gold,
+    x_label = int(w * 0.08)
+    x_value = int(w * 0.36)
+    y_start = int(h * 0.43)
+    row_gap = int(h * 0.115)
+
+    # MINUTE
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start,
+        text="MINUTE:",
+        size=label_size,
+        fill=gold,
         stroke_fill=black,
-        stroke_width=4,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
     )
-    draw_left_text(
-        draw,
-        x_value,
-        y_start,
-        str(minute),
-        font_value,
-        white,
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start,
+        text=str(minute),
+        size=value_size,
+        fill=white,
         stroke_fill=black,
-        stroke_width=4,
+        bold=True,
+        anchor="lt",
+        fallback_height=value_fallback_h,
     )
 
-    draw_left_text(
-        draw,
-        x_label,
-        y_start + row_gap,
-        "SCORE:",
-        font_label,
-        gold,
+    # SCORE
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start + row_gap,
+        text="SCORE:",
+        size=label_size,
+        fill=gold,
         stroke_fill=black,
-        stroke_width=4,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
     )
-    draw_left_text(
-        draw,
-        x_value,
-        y_start + row_gap,
-        str(score),
-        font_value,
-        white,
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start + row_gap,
+        text=str(score),
+        size=value_size,
+        fill=white,
         stroke_fill=black,
-        stroke_width=4,
-    )
-
-    draw_left_text(
-        draw,
-        x_label,
-        y_start + row_gap * 2,
-        "PICK:",
-        font_label,
-        gold,
-        stroke_fill=black,
-        stroke_width=4,
+        bold=True,
+        anchor="lt",
+        fallback_height=value_fallback_h,
     )
 
-    pick_lines = wrap_text_by_pixels(draw, str(pick), font_pick, int(w * 0.34))
+    # PICK
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start + row_gap * 2,
+        text="PICK:",
+        size=label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=label_fallback_h,
+    )
+
+    pick_wrap_font = get_truetype_font(max(20, int(h * 0.033)), bold=True) or ImageFont.load_default()
+    pick_lines = wrap_text_by_pixels(draw, str(pick), pick_wrap_font, int(w * 0.34))
     for i, line in enumerate(pick_lines[:2]):
-        draw_left_text(
-            draw,
-            x_value,
-            y_start + row_gap * 2 + i * int(h * 0.05),
-            line,
-            font_pick,
-            white,
+        draw_text(
+            base_img=img,
+            draw=draw,
+            x=x_value,
+            y=y_start + row_gap * 2 + i * int(h * 0.052),
+            text=line,
+            size=pick_size,
+            fill=white,
             stroke_fill=black,
-            stroke_width=4,
+            bold=True,
+            anchor="lt",
+            fallback_height=pick_fallback_h,
         )
 
     filename = f"/tmp/alert_{int(time.time())}.jpg"
@@ -281,12 +388,14 @@ def build_image(league, home, away, minute, score, pick):
     print(f"[IMAGE] Saved preview to {filename} | final_size={img.size}")
     return filename
 
+
 # ================================
 # CLOUDINARY
 # ================================
 def upload_image(image_path):
     result = cloudinary.uploader.upload(image_path, folder="nvm_instagram")
     return result["secure_url"]
+
 
 # ================================
 # TOKEN
@@ -298,6 +407,7 @@ def get_active_token():
             if token:
                 return token
     return IG_ACCESS_TOKEN
+
 
 # ================================
 # INSTAGRAM POST
@@ -347,6 +457,7 @@ def post_to_instagram(image_url, caption):
 
     publish_response = requests.post(publish_url, data=publish_payload, timeout=120).json()
     return publish_response
+
 
 # ================================
 # META LOGIN
@@ -406,6 +517,7 @@ def get_token():
         token = f.read().strip()
 
     return jsonify({"ok": True, "token": token})
+
 
 # ================================
 # ROUTES
