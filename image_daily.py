@@ -39,11 +39,11 @@ def build_daily_report(date_text, wins, lost, winrate):
 
     # Date (above lost)
     date_x = lost_x
-    date_y = int(h * 0.35)
+    date_y = int(h * 0.36)
 
     # Total picks
-    total_x = int(w * 0.60)
-    total_y = int(h * 0.70)
+    total_x = int(w * 0.62)
+    total_y = int(h * 0.72)
 
     total_picks = str(int(wins) + int(lost))
 
