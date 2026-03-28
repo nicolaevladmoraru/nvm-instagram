@@ -43,7 +43,7 @@ def build_daily_report(date_text, wins, lost, winrate):
 
     # Total picks
     total_x = int(w * 0.62)
-    total_y = int(h * 0.695)
+    total_y = int(h * 0.705)
 
     total_picks = str(int(wins) + int(lost))
 
