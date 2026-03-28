@@ -27,23 +27,23 @@ def build_daily_report(date_text, wins, lost, winrate):
 
     # Wins box (left)
     wins_x = int(w * 0.23)
-    wins_y = int(h * 0.56)
+    wins_y = int(h * 0.54)
 
     # Lost box (center)
     lost_x = int(w * 0.50)
-    lost_y = int(h * 0.56)
+    lost_y = int(h * 0.54)
 
     # Winrate box (right)
     winrate_x = int(w * 0.77)
-    winrate_y = int(h * 0.56)
+    winrate_y = int(h * 0.54)
 
     # Date (above lost)
     date_x = lost_x
-    date_y = int(h * 0.38)
+    date_y = int(h * 0.35)
 
     # Total picks
-    total_x = int(w * 0.66)
-    total_y = int(h * 0.74)
+    total_x = int(w * 0.60)
+    total_y = int(h * 0.70)
 
     total_picks = str(int(wins) + int(lost))
 
