@@ -2,8 +2,9 @@ import os
 import time
 from PIL import Image, ImageDraw
 
-from config import TEMPLATE_PATH
 from font_utils import draw_text
+
+TEMPLATE_PATH = "templates/template_milestone.png"
 
 
 def build_milestone_image(title, date_text, wins, lost, winrate):
@@ -32,9 +33,6 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
 
     subtitle_text = "PROFIT MILESTONE"
 
-    # ================================
-    # SIZES
-    # ================================
     title_size = int(h * 0.052)
     milestone_size = int(h * 0.135)
     subtitle_size = int(h * 0.034)
@@ -43,9 +41,6 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
     milestone_fallback_h = int(h * 0.140)
     subtitle_fallback_h = int(h * 0.038)
 
-    # ================================
-    # TITLE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -60,9 +55,6 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
-    # ================================
-    # MILESTONE VALUE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -77,9 +69,6 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
         fallback_height=milestone_fallback_h,
     )
 
-    # ================================
-    # SUBTITLE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
