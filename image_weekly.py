@@ -2,8 +2,9 @@ import os
 import time
 from PIL import Image, ImageDraw
 
-from config import TEMPLATE_PATH
 from font_utils import draw_text
+
+TEMPLATE_PATH = "templates/template_weekly_report.png"
 
 
 def build_weekly_image(title, date_text, wins, lost, winrate):
@@ -26,9 +27,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     if not header_text:
         header_text = "NVM WEEKLY REPORT"
 
-    # ================================
-    # SIZES
-    # ================================
     title_size = int(h * 0.050)
     date_size = int(h * 0.034)
 
@@ -47,9 +45,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     winrate_label_fallback_h = int(h * 0.048)
     winrate_value_fallback_h = int(h * 0.110)
 
-    # ================================
-    # TITLE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -64,9 +59,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
-    # ================================
-    # PERIOD / DATE RANGE
-    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -81,9 +73,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
         fallback_height=date_fallback_h,
     )
 
-    # ================================
-    # LEFT STATS
-    # ================================
     x_label = int(w * 0.11)
     x_value = int(w * 0.42)
 
@@ -144,9 +133,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
         fallback_height=stat_value_fallback_h,
     )
 
-    # ================================
-    # WIN RATE
-    # ================================
     winrate_x = int(w * 0.33)
     winrate_label_y = int(h * 0.60)
     winrate_value_y = int(h * 0.70)
