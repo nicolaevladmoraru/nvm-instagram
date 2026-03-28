@@ -22,8 +22,13 @@ def build_daily_image(title, date_text, wins, lost, winrate):
 
     center_x = int(w * 0.50)
 
-    header_text = "NVM DAILY REPORT"
+    header_text = str(title or "NVM DAILY REPORT").strip()
+    if not header_text:
+        header_text = "NVM DAILY REPORT"
 
+    # ================================
+    # SIZES
+    # ================================
     title_size = int(h * 0.050)
     date_size = int(h * 0.034)
 
@@ -42,6 +47,9 @@ def build_daily_image(title, date_text, wins, lost, winrate):
     winrate_label_fallback_h = int(h * 0.048)
     winrate_value_fallback_h = int(h * 0.110)
 
+    # ================================
+    # TITLE
+    # ================================
     draw_text(
         base_img=img,
         draw=draw,
@@ -56,12 +64,15 @@ def build_daily_image(title, date_text, wins, lost, winrate):
         fallback_height=title_fallback_h,
     )
 
+    # ================================
+    # DATE
+    # ================================
     draw_text(
         base_img=img,
         draw=draw,
         x=center_x,
         y=int(h * 0.145),
-        text=str(date_text),
+        text=str(date_text or ""),
         size=date_size,
         fill=white,
         stroke_fill=black,
@@ -70,18 +81,72 @@ def build_daily_image(title, date_text, wins, lost, winrate):
         fallback_height=date_fallback_h,
     )
 
+    # ================================
+    # LEFT STATS
+    # ================================
     x_label = int(w * 0.11)
     x_value = int(w * 0.42)
 
     y_start = int(h * 0.35)
     row_gap = int(h * 0.12)
 
-    draw_text(img, draw, x_label, y_start, "WINS:", stat_label_size, gold, black, True, "lt", stat_label_fallback_h)
-    draw_text(img, draw, x_value, y_start, str(wins), stat_value_size, white, black, True, "lt", stat_value_fallback_h)
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start,
+        text="WINS:",
+        size=stat_label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=stat_label_fallback_h,
+    )
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start,
+        text=str(wins),
+        size=stat_value_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=stat_value_fallback_h,
+    )
 
-    draw_text(img, draw, x_label, y_start + row_gap, "LOST:", stat_label_size, gold, black, True, "lt", stat_label_fallback_h)
-    draw_text(img, draw, x_value, y_start + row_gap, str(lost), stat_value_size, white, black, True, "lt", stat_value_fallback_h)
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_label,
+        y=y_start + row_gap,
+        text="LOST:",
+        size=stat_label_size,
+        fill=gold,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=stat_label_fallback_h,
+    )
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=x_value,
+        y=y_start + row_gap,
+        text=str(lost),
+        size=stat_value_size,
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="lt",
+        fallback_height=stat_value_fallback_h,
+    )
 
+    # ================================
+    # WIN RATE
+    # ================================
     winrate_x = int(w * 0.33)
     winrate_label_y = int(h * 0.60)
     winrate_value_y = int(h * 0.70)
