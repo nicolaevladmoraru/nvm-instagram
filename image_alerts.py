@@ -2,8 +2,9 @@ import os
 import time
 from PIL import Image, ImageDraw, ImageFont
 
-from config import TEMPLATE_PATH
 from font_utils import draw_text, get_truetype_font, wrap_text_by_pixels
+
+TEMPLATE_PATH = "templates/template_live_alerts.png"
 
 
 def build_alert_image(league, home, away, minute, score, pick):
