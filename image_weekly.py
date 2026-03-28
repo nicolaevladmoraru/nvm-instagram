@@ -15,157 +15,127 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
 
     draw = ImageDraw.Draw(img)
     w, h = img.size
+
     print(f"[WEEKLY IMAGE] template_size={img.size}")
 
-    gold = (242, 196, 78)
     white = (255, 255, 255)
     black = (0, 0, 0)
 
-    center_x = int(w * 0.50)
+    # =========================
+    # CLEAN DATE (REMOVE "-")
+    # =========================
+    date_text = str(date_text).replace("-", " ").replace("  ", " ").strip()
 
-    header_text = str(title or "NVM WEEKLY REPORT").strip()
-    if not header_text:
-        header_text = "NVM WEEKLY REPORT"
+    # =========================
+    # POSITIONS (LIKE DAILY)
+    # =========================
 
-    title_size = int(h * 0.050)
-    date_size = int(h * 0.034)
+    # Wins
+    wins_x = int(w * 0.23)
+    wins_y = int(h * 0.54)
 
-    stat_label_size = int(h * 0.044)
-    stat_value_size = int(h * 0.066)
+    # Lost
+    lost_x = int(w * 0.50)
+    lost_y = int(h * 0.54)
 
-    winrate_label_size = int(h * 0.045)
-    winrate_value_size = int(h * 0.105)
+    # Winrate
+    winrate_x = int(w * 0.77)
+    winrate_y = int(h * 0.54)
 
-    title_fallback_h = int(h * 0.054)
-    date_fallback_h = int(h * 0.038)
+    # Date (above LOST)
+    date_x = lost_x
+    date_y = int(h * 0.34)
 
-    stat_label_fallback_h = int(h * 0.046)
-    stat_value_fallback_h = int(h * 0.070)
+    # Total picks
+    total_x = int(w * 0.62)
+    total_y = int(h * 0.705)
 
-    winrate_label_fallback_h = int(h * 0.048)
-    winrate_value_fallback_h = int(h * 0.110)
+    total_picks = str(int(wins) + int(lost))
 
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=center_x,
-        y=int(h * 0.065),
-        text=header_text,
-        size=title_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
-        anchor="mm",
-        fallback_height=title_fallback_h,
-    )
+    # =========================
+    # DATE (WITH BIGGER SPACING)
+    # =========================
+    spaced_date = "   ".join(date_text.split())
 
     draw_text(
         base_img=img,
         draw=draw,
-        x=center_x,
-        y=int(h * 0.145),
-        text=str(date_text or ""),
-        size=date_size,
+        x=date_x,
+        y=date_y,
+        text=spaced_date,
+        size=int(h * 0.045),
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="mm",
-        fallback_height=date_fallback_h,
     )
 
-    x_label = int(w * 0.11)
-    x_value = int(w * 0.42)
-
-    y_start = int(h * 0.35)
-    row_gap = int(h * 0.12)
-
+    # =========================
+    # WINS
+    # =========================
     draw_text(
         base_img=img,
         draw=draw,
-        x=x_label,
-        y=y_start,
-        text="WINS:",
-        size=stat_label_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_label_fallback_h,
-    )
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_value,
-        y=y_start,
+        x=wins_x,
+        y=wins_y,
         text=str(wins),
-        size=stat_value_size,
+        size=int(h * 0.085),
         fill=white,
         stroke_fill=black,
         bold=True,
-        anchor="lt",
-        fallback_height=stat_value_fallback_h,
+        anchor="mm",
     )
 
+    # =========================
+    # LOST
+    # =========================
     draw_text(
         base_img=img,
         draw=draw,
-        x=x_label,
-        y=y_start + row_gap,
-        text="LOST:",
-        size=stat_label_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
-        anchor="lt",
-        fallback_height=stat_label_fallback_h,
-    )
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=x_value,
-        y=y_start + row_gap,
+        x=lost_x,
+        y=lost_y,
         text=str(lost),
-        size=stat_value_size,
+        size=int(h * 0.085),
         fill=white,
         stroke_fill=black,
         bold=True,
-        anchor="lt",
-        fallback_height=stat_value_fallback_h,
-    )
-
-    winrate_x = int(w * 0.33)
-    winrate_label_y = int(h * 0.60)
-    winrate_value_y = int(h * 0.70)
-
-    draw_text(
-        base_img=img,
-        draw=draw,
-        x=winrate_x,
-        y=winrate_label_y,
-        text="WIN RATE",
-        size=winrate_label_size,
-        fill=gold,
-        stroke_fill=black,
-        bold=True,
         anchor="mm",
-        fallback_height=winrate_label_fallback_h,
     )
 
+    # =========================
+    # WINRATE
+    # =========================
     draw_text(
         base_img=img,
         draw=draw,
         x=winrate_x,
-        y=winrate_value_y,
+        y=winrate_y,
         text=str(winrate),
-        size=winrate_value_size,
+        size=int(h * 0.075),
         fill=white,
         stroke_fill=black,
         bold=True,
         anchor="mm",
-        fallback_height=winrate_value_fallback_h,
     )
 
-    filename = f"/tmp/weekly_report_{int(time.time())}.jpg"
+    # =========================
+    # TOTAL PICKS
+    # =========================
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=total_x,
+        y=total_y,
+        text=total_picks,
+        size=int(h * 0.055),
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+    )
+
+    filename = f"/tmp/weekly_{int(time.time())}.jpg"
     img.convert("RGB").save(filename, "JPEG", quality=95)
-    print(f"[WEEKLY IMAGE] Saved to {filename} | final_size={img.size}")
+
+    print(f"[WEEKLY IMAGE] Saved to {filename}")
     return filename
