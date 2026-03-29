@@ -35,11 +35,11 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     wins_y = int(h * 0.54)
 
     # Lost
-    lost_x = int(w * 0.50)
+    lost_x = int(w * 0.49)
     lost_y = int(h * 0.54)
 
     # Winrate
-    winrate_x = int(w * 0.77)
+    winrate_x = int(w * 0.79)
     winrate_y = int(h * 0.54)
 
     # Date (above LOST)
