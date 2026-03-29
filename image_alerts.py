@@ -67,7 +67,7 @@ def build_alert_image(
     minute_size = int(h * 0.038)
     score_size = int(h * 0.13)
     team_size = int(h * 0.050)
-    pick_size = int(h * 0.070)
+    pick_size = int(h * 0.080)
 
     league_fallback_h = int(h * 0.042)
     vs_fallback_h = int(h * 0.058)
@@ -216,7 +216,7 @@ def build_alert_image(
     else:
         pick_lines = [pick_text]
 
-    pick_y = int(h * 0.60)
+    pick_y = int(h * 0.55)
     for i, line in enumerate(pick_lines[:2]):
         draw_text(
             base_img=img,
