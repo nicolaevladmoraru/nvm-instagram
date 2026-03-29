@@ -39,7 +39,7 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
 
     # Date (above LOST)
     date_x = lost_x
-    date_y = int(h * 0.34)
+    date_y = int(h * 0.36)
 
     # Total picks
     total_x = int(w * 0.65)
