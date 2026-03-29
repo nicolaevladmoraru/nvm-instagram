@@ -55,7 +55,7 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     # =========================
     # DATE (WITH BIGGER SPACING)
     # =========================
-    spaced_date = "   ".join(date_text.split())
+    spaced_date = "        ".join(date_text.split())
 
     draw_text(
         base_img=img,
