@@ -22,27 +22,91 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
     black = (0, 0, 0)
 
     # =========================
-    # MILESTONE VALUE
+    # VALUES
     # =========================
-    # folosim date_text ca valoare (ex: "100x")
-    milestone_value = str(date_text)
+    total_matches = str(date_text)
+    wins_value = str(wins)
+    lost_value = str(lost)
+    winrate_value = str(winrate)
 
     # =========================
-    # POSITION (CENTER)
+    # POSITIONS
     # =========================
-    center_x = int(w * 0.50)
-    center_y = int(h * 0.52)
+
+    # Total Matches
+    total_matches_x = int(w * 0.18)
+    total_matches_y = int(h * 0.55)
+
+    # Wins
+    wins_x = int(w * 0.42)
+    wins_y = int(h * 0.55)
+
+    # Losts
+    lost_x = int(w * 0.65)
+    lost_y = int(h * 0.55)
+
+    # Win Rate
+    winrate_x = int(w * 0.86)
+    winrate_y = int(h * 0.55)
 
     # =========================
-    # DRAW MILESTONE
+    # TOTAL MATCHES
     # =========================
     draw_text(
         base_img=img,
         draw=draw,
-        x=center_x,
-        y=center_y,
-        text=milestone_value,
-        size=int(h * 0.11),
+        x=total_matches_x,
+        y=total_matches_y,
+        text=total_matches,
+        size=int(h * 0.060),
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+    )
+
+    # =========================
+    # WINS
+    # =========================
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=wins_x,
+        y=wins_y,
+        text=wins_value,
+        size=int(h * 0.060),
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+    )
+
+    # =========================
+    # LOSTS
+    # =========================
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=lost_x,
+        y=lost_y,
+        text=lost_value,
+        size=int(h * 0.060),
+        fill=white,
+        stroke_fill=black,
+        bold=True,
+        anchor="mm",
+    )
+
+    # =========================
+    # WIN RATE
+    # =========================
+    draw_text(
+        base_img=img,
+        draw=draw,
+        x=winrate_x,
+        y=winrate_y,
+        text=winrate_value,
+        size=int(h * 0.055),
         fill=white,
         stroke_fill=black,
         bold=True,
