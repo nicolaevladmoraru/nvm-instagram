@@ -65,7 +65,7 @@ def build_alert_image(
     league_size = int(h * 0.040)
     vs_size = int(h * 0.055)
     minute_size = int(h * 0.038)
-    score_size = int(h * 0.095)
+    score_size = int(h * 0.15)
     team_size = int(h * 0.050)
     pick_size = int(h * 0.058)
 
@@ -166,7 +166,7 @@ def build_alert_image(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.54),
+        y=int(h * 0.10),
         text=score_text,
         size=score_size,
         fill=gold,
