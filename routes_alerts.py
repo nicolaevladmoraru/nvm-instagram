@@ -22,9 +22,6 @@ def preview_alert():
         home_logo_url = data.get("home_logo_url", data.get("home_logo", ""))
         away_logo_url = data.get("away_logo_url", data.get("away_logo", ""))
 
-        home_color = data.get("home_color")
-        away_color = data.get("away_color")
-
         image_path = build_alert_image(
             league=league,
             home=home,
@@ -34,9 +31,8 @@ def preview_alert():
             pick=pick,
             home_logo_url=home_logo_url,
             away_logo_url=away_logo_url,
-            home_color=home_color,
-            away_color=away_color,
         )
+
         image_url = upload_image(image_path)
 
         return jsonify({
@@ -44,6 +40,7 @@ def preview_alert():
             "preview_only": True,
             "image_url": image_url
         })
+
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -64,9 +61,6 @@ def post_alert():
         home_logo_url = data.get("home_logo_url", data.get("home_logo", ""))
         away_logo_url = data.get("away_logo_url", data.get("away_logo", ""))
 
-        home_color = data.get("home_color")
-        away_color = data.get("away_color")
-
         if not caption:
             caption = (
                 f"{league}\n"
@@ -86,9 +80,8 @@ def post_alert():
             pick=pick,
             home_logo_url=home_logo_url,
             away_logo_url=away_logo_url,
-            home_color=home_color,
-            away_color=away_color,
         )
+
         image_url = upload_image(image_path)
         result = post_to_instagram(image_url, caption)
 
@@ -97,5 +90,6 @@ def post_alert():
             "image_url": image_url,
             "result": result
         })
+
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
