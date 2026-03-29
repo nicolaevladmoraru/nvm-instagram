@@ -34,7 +34,7 @@ def build_milestone_image(title, date_text, wins, lost, winrate):
     # =========================
 
     # Total Matches
-    total_matches_x = int(w * 0.245)
+    total_matches_x = int(w * 0.25)
     total_matches_y = int(h * 0.64)
 
     # Wins
