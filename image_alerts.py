@@ -149,7 +149,7 @@ def build_alert_image(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.46),
+        y=int(h * 0.31),
         text=minute_text,
         size=minute_size,
         fill=gold,
