@@ -19,7 +19,24 @@ def preview_alert():
         score = data.get("score", "")
         pick = data.get("pick", data.get("pick_text", ""))
 
-        image_path = build_alert_image(league, home, away, minute, score, pick)
+        home_logo_url = data.get("home_logo_url", data.get("home_logo", ""))
+        away_logo_url = data.get("away_logo_url", data.get("away_logo", ""))
+
+        home_color = data.get("home_color")
+        away_color = data.get("away_color")
+
+        image_path = build_alert_image(
+            league=league,
+            home=home,
+            away=away,
+            minute=minute,
+            score=score,
+            pick=pick,
+            home_logo_url=home_logo_url,
+            away_logo_url=away_logo_url,
+            home_color=home_color,
+            away_color=away_color,
+        )
         image_url = upload_image(image_path)
 
         return jsonify({
@@ -44,6 +61,12 @@ def post_alert():
         pick = data.get("pick", data.get("pick_text", ""))
         caption = data.get("caption_message", "")
 
+        home_logo_url = data.get("home_logo_url", data.get("home_logo", ""))
+        away_logo_url = data.get("away_logo_url", data.get("away_logo", ""))
+
+        home_color = data.get("home_color")
+        away_color = data.get("away_color")
+
         if not caption:
             caption = (
                 f"{league}\n"
@@ -54,7 +77,18 @@ def post_alert():
                 f"@nvm_access_engine_bot"
             )
 
-        image_path = build_alert_image(league, home, away, minute, score, pick)
+        image_path = build_alert_image(
+            league=league,
+            home=home,
+            away=away,
+            minute=minute,
+            score=score,
+            pick=pick,
+            home_logo_url=home_logo_url,
+            away_logo_url=away_logo_url,
+            home_color=home_color,
+            away_color=away_color,
+        )
         image_url = upload_image(image_path)
         result = post_to_instagram(image_url, caption)
 
