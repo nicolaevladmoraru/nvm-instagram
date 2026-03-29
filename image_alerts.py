@@ -117,7 +117,7 @@ def build_alert_image(
 
     home_logo_x = int(w * 0.14)
     away_logo_x = int(w * 0.64)
-    logos_y = int(h * 0.15)
+    logos_y = int(h * 0.10)
 
     if home_logo is not None:
         img.paste(home_logo, (home_logo_x, logos_y), home_logo)
