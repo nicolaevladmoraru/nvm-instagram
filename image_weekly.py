@@ -31,7 +31,7 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     # =========================
 
     # Wins
-    wins_x = int(w * 0.23)
+    wins_x = int(w * 0.21)
     wins_y = int(h * 0.54)
 
     # Lost
