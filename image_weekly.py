@@ -22,11 +22,6 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     black = (0, 0, 0)
 
     # =========================
-    # CLEAN DATE (REMOVE "-")
-    # =========================
-    date_text = str(date_text).replace("-", " ").replace("  ", " ").strip()
-
-    # =========================
     # POSITIONS (LIKE DAILY)
     # =========================
 
@@ -53,9 +48,9 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
     total_picks = str(int(wins) + int(lost))
 
     # =========================
-    # DATE (WITH BIGGER SPACING)
+    # DATE
     # =========================
-    spaced_date = "   ".join(date_text.split())
+    spaced_date = str(date_text)
 
     draw_text(
         base_img=img,
