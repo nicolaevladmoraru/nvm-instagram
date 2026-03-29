@@ -48,7 +48,7 @@ def build_weekly_image(title, date_text, wins, lost, winrate):
 
     # Total picks
     total_x = int(w * 0.65)
-    total_y = int(h * 0.71)
+    total_y = int(h * 0.707)
 
     total_picks = str(int(wins) + int(lost))
 
