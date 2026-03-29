@@ -166,7 +166,7 @@ def build_alert_image(
         base_img=img,
         draw=draw,
         x=center_x,
-        y=int(h * 0.22),
+        y=int(h * 0.23),
         text=score_text,
         size=score_size,
         fill=gold,
