@@ -92,7 +92,7 @@ def build_alert_image(
     else:
         league_lines = [league_text]
 
-    league_y = int(h * 0.14)
+    league_y = int(h * 0.10)
     for i, line in enumerate(league_lines[:2]):
         draw_text(
             base_img=img,
