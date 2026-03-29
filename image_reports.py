@@ -14,8 +14,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
             lost=lost,
             winrate=winrate,
         )
-
-    if report_type == "weekly":
+    elif report_type == "weekly":
         return build_weekly_image(
             title=title,
             date_text=date_text,
@@ -23,8 +22,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
             lost=lost,
             winrate=winrate,
         )
-
-    if report_type == "monthly":
+    elif report_type == "monthly":
         return build_monthly_image(
             title=title,
             date_text=date_text,
@@ -32,8 +30,7 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
             lost=lost,
             winrate=winrate,
         )
-
-    if report_type == "milestone":
+    elif report_type == "milestone":
         return build_milestone_image(
             title=title,
             date_text=date_text,
@@ -41,5 +38,5 @@ def build_report_image(report_type, title, date_text, wins, lost, winrate):
             lost=lost,
             winrate=winrate,
         )
-
-    raise ValueError(f"Unsupported report_type: {report_type}")
+    else:
+        raise ValueError(f"Unsupported report_type: {report_type}")
