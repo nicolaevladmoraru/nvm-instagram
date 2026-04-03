@@ -1,16 +1,10 @@
-import os
 import time
 import requests
 
-from config import BASE_URL, IG_ACCESS_TOKEN, IG_USER_ID, TOKEN_FILE
+from config import BASE_URL, IG_ACCESS_TOKEN, IG_USER_ID
 
 
 def get_active_token():
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "r", encoding="utf-8") as f:
-            token = f.read().strip()
-            if token:
-                return token
     return IG_ACCESS_TOKEN
 
 
