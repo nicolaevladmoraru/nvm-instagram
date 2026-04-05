@@ -7,6 +7,24 @@ from instagram_api import post_to_instagram
 alerts_bp = Blueprint("alerts_bp", __name__)
 
 
+def build_manual_tiktok_caption(
+    league: str,
+    home: str,
+    away: str,
+    minute: str,
+    score: str,
+) -> str:
+    parts = [
+        f"{home} vs {away}",
+        f"{league}",
+        f"Minute: {minute or 'Live now'}",
+        f"Score: {score or 'Match in play'}",
+        "",
+        "@nvm_access_engine_bot",
+    ]
+    return "\n".join(parts).strip()
+
+
 @alerts_bp.route("/preview-alert", methods=["POST"])
 def preview_alert():
     try:
@@ -31,6 +49,7 @@ def preview_alert():
             pick=pick,
             home_logo_url=home_logo_url,
             away_logo_url=away_logo_url,
+            include_pick=True,
         )
 
         image_url = upload_image(image_path)
@@ -71,7 +90,7 @@ def post_alert():
                 f"@nvm_access_engine_bot"
             )
 
-        image_path = build_alert_image(
+        instagram_image_path = build_alert_image(
             league=league,
             home=home,
             away=away,
@@ -80,15 +99,38 @@ def post_alert():
             pick=pick,
             home_logo_url=home_logo_url,
             away_logo_url=away_logo_url,
+            include_pick=True,
         )
+        instagram_image_url = upload_image(instagram_image_path)
+        instagram_result = post_to_instagram(instagram_image_url, caption)
 
-        image_url = upload_image(image_path)
-        result = post_to_instagram(image_url, caption)
+        telegram_image_path = build_alert_image(
+            league=league,
+            home=home,
+            away=away,
+            minute=minute,
+            score=score,
+            pick="",
+            home_logo_url=home_logo_url,
+            away_logo_url=away_logo_url,
+            include_pick=False,
+        )
+        telegram_image_url = upload_image(telegram_image_path)
+
+        telegram_caption = build_manual_tiktok_caption(
+            league=str(league or "").strip(),
+            home=str(home or "").strip(),
+            away=str(away or "").strip(),
+            minute=str(minute or "").strip(),
+            score=str(score or "").strip(),
+        )
 
         return jsonify({
             "ok": True,
-            "image_url": image_url,
-            "result": result
+            "image_url": instagram_image_url,
+            "telegram_image_url": telegram_image_url,
+            "telegram_caption": telegram_caption,
+            "result": instagram_result
         })
 
     except Exception as e:
