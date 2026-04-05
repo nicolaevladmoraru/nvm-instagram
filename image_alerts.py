@@ -42,6 +42,7 @@ def build_alert_image(
     away_logo_url=None,
     home_color=None,
     away_color=None,
+    include_pick: bool = True,
 ):
     if os.path.exists(TEMPLATE_PATH):
         img = Image.open(TEMPLATE_PATH).convert("RGBA")
@@ -49,7 +50,7 @@ def build_alert_image(
         img = Image.new("RGBA", (1024, 1024), (0, 0, 0, 255))
 
     w, h = img.size
-    print(f"[ALERT IMAGE] template_size={img.size}")
+    print(f"[ALERT IMAGE] template_size={img.size} | include_pick={include_pick}")
 
     draw = ImageDraw.Draw(img)
 
@@ -57,24 +58,21 @@ def build_alert_image(
     gold = (242, 196, 78)
     black = (0, 0, 0)
 
-    center_x = int(w * 0.50)
+    center_x = int(w * 0.5)
 
-    # =========================
-    # TEXT SIZES
-    # =========================
-    league_size = int(h * 0.040)
+    league_size = int(h * 0.04)
     vs_size = int(h * 0.055)
     minute_size = int(h * 0.038)
     score_size = int(h * 0.13)
-    team_size = int(h * 0.050)
-    pick_size = int(h * 0.080)
+    team_size = int(h * 0.05)
+    pick_size = int(h * 0.08)
 
     league_fallback_h = int(h * 0.042)
     vs_fallback_h = int(h * 0.058)
-    minute_fallback_h = int(h * 0.040)
-    score_fallback_h = int(h * 0.100)
+    minute_fallback_h = int(h * 0.04)
+    score_fallback_h = int(h * 0.1)
     team_fallback_h = int(h * 0.052)
-    pick_fallback_h = int(h * 0.060)
+    pick_fallback_h = int(h * 0.06)
 
     league_text = str(league or "").strip().upper()
     home_text = str(home or "").strip().upper()
@@ -83,9 +81,6 @@ def build_alert_image(
     score_text = str(score or "").strip()
     pick_text = str(pick or "").strip().upper()
 
-    # =========================
-    # LEAGUE
-    # =========================
     league_wrap_font = get_truetype_font(max(20, int(h * 0.028)), bold=True)
     if league_wrap_font:
         league_lines = wrap_text_by_pixels(draw, league_text, league_wrap_font, int(w * 0.78))
@@ -108,16 +103,13 @@ def build_alert_image(
             fallback_height=league_fallback_h,
         )
 
-    # =========================
-    # TEAM LOGOS
-    # =========================
     logo_size = (int(w * 0.22), int(w * 0.22))
     home_logo = _download_logo(home_logo_url, logo_size)
     away_logo = _download_logo(away_logo_url, logo_size)
 
     home_logo_x = int(w * 0.14)
     away_logo_x = int(w * 0.64)
-    logos_y = int(h * 0.10)
+    logos_y = int(h * 0.1)
 
     if home_logo is not None:
         img.paste(home_logo, (home_logo_x, logos_y), home_logo)
@@ -125,9 +117,6 @@ def build_alert_image(
     if away_logo is not None:
         img.paste(away_logo, (away_logo_x, logos_y), away_logo)
 
-    # =========================
-    # VS
-    # =========================
     draw_text(
         base_img=img,
         draw=draw,
@@ -142,9 +131,6 @@ def build_alert_image(
         fallback_height=vs_fallback_h,
     )
 
-    # =========================
-    # MINUTE
-    # =========================
     draw_text(
         base_img=img,
         draw=draw,
@@ -159,9 +145,6 @@ def build_alert_image(
         fallback_height=minute_fallback_h,
     )
 
-    # =========================
-    # SCORE
-    # =========================
     draw_text(
         base_img=img,
         draw=draw,
@@ -176,9 +159,6 @@ def build_alert_image(
         fallback_height=score_fallback_h,
     )
 
-    # =========================
-    # TEAM NAMES
-    # =========================
     draw_text(
         base_img=img,
         draw=draw,
@@ -207,30 +187,28 @@ def build_alert_image(
         fallback_height=team_fallback_h,
     )
 
-    # =========================
-    # PICK CONTENT
-    # =========================
-    pick_wrap_font = get_truetype_font(max(22, int(h * 0.032)), bold=True)
-    if pick_wrap_font:
-        pick_lines = wrap_text_by_pixels(draw, pick_text, pick_wrap_font, int(w * 0.58))
-    else:
-        pick_lines = [pick_text]
+    if include_pick:
+        pick_wrap_font = get_truetype_font(max(22, int(h * 0.032)), bold=True)
+        if pick_wrap_font:
+            pick_lines = wrap_text_by_pixels(draw, pick_text, pick_wrap_font, int(w * 0.58))
+        else:
+            pick_lines = [pick_text]
 
-    pick_y = int(h * 0.55)
-    for i, line in enumerate(pick_lines[:2]):
-        draw_text(
-            base_img=img,
-            draw=draw,
-            x=center_x,
-            y=pick_y + i * int(h * 0.045),
-            text=line,
-            size=pick_size,
-            fill=gold,
-            stroke_fill=black,
-            bold=True,
-            anchor="mm",
-            fallback_height=pick_fallback_h,
-        )
+        pick_y = int(h * 0.55)
+        for i, line in enumerate(pick_lines[:2]):
+            draw_text(
+                base_img=img,
+                draw=draw,
+                x=center_x,
+                y=pick_y + i * int(h * 0.045),
+                text=line,
+                size=pick_size,
+                fill=gold,
+                stroke_fill=black,
+                bold=True,
+                anchor="mm",
+                fallback_height=pick_fallback_h,
+            )
 
     filename = f"/tmp/alert_{int(time.time())}.jpg"
     img.convert("RGB").save(filename, "JPEG", quality=95)
